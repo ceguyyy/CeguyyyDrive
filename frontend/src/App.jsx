@@ -1,0 +1,51 @@
+import React, { useEffect } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { useAuthStore } from './store/authStore';
+
+import Login from './pages/Login';
+import Register from './pages/Register';
+import DashboardLayout from './layouts/DashboardLayout';
+import Dashboard from './pages/Dashboard';
+import Trash from './pages/Trash';
+import PublicShare from './pages/PublicShare';
+import ChatPage from './pages/ChatPage';
+
+const ProtectedRoute = ({ children }) => {
+    const { token } = useAuthStore();
+    
+    if (!token) return <Navigate to="/login" replace />;
+    return children;
+};
+
+export default function App() {
+    const { token, fetchMe } = useAuthStore();
+
+    useEffect(() => {
+        if (token) {
+            fetchMe();
+        }
+    }, [token, fetchMe]);
+
+    return (
+        <Routes>
+            <Route path="/s/:token" element={<PublicShare />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            
+            <Route path="/" element={
+                <ProtectedRoute>
+                    <DashboardLayout />
+                </ProtectedRoute>
+            }>
+                <Route index element={<Navigate to="/drive" replace />} />
+                <Route path="drive" element={<Dashboard />} />
+                <Route path="drive/folders/:folderId" element={<Dashboard />} />
+                <Route path="shared" element={<div className="p-8 font-bold text-xl">Shared (Coming Soon)</div>} />
+                <Route path="trash" element={<Trash />} />
+                <Route path="chat" element={<ChatPage />} />
+            </Route>
+
+            <Route path="*" element={<Navigate to="/drive" replace />} />
+        </Routes>
+    );
+}

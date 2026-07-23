@@ -1,0 +1,23 @@
+body {
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #FFFFFF;
+  color: #37352F;
+}
+
+/* Notion-like scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #EAEAEA;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #D3D3D3;
+}

@@ -1,0 +1,104 @@
+const db = require('../config/db');
+
+class FileRepository {
+    async create(originalName, size, mimeType, storageKey, folderId, userId) {
+        const result = await db.query(
+            `INSERT INTO files (original_name, size, mime_type, storage_key, folder_id, user_id) 
+             VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+            [originalName, size, mimeType, storageKey, folderId, userId]
+        );
+        return result.rows[0];
+    }
+
+    async findByIdAndUser(id, userId) {
+        const result = await db.query(
+            `SELECT * FROM files WHERE id = $1 AND user_id = $2 AND is_deleted = false`,
+            [id, userId]
+        );
+        return result.rows[0];
+    }
+
+    async findByNameAndFolder(name, folderId, userId) {
+        let query = `SELECT * FROM files WHERE name = $1 AND user_id = $2 AND is_deleted = false `;
+        const params = [name, userId];
+        
+        if (folderId) {
+            query += `AND folder_id = $3`;
+            params.push(folderId);
+        } else {
+            query += `AND folder_id IS NULL`;
+        }
+
+        const result = await db.query(query, params);
+        return result.rows[0];
+    }
+
+    async findByFolderAndUser(folderId, userId) {
+        let query = `SELECT * FROM files WHERE user_id = $1 AND is_deleted = false `;
+        const params = [userId];
+
+        if (folderId) {
+            query += `AND folder_id = $2`;
+            params.push(folderId);
+        } else {
+            query += `AND folder_id IS NULL`;
+        }
+        
+        query += ` ORDER BY original_name ASC`;
+
+        const result = await db.query(query, params);
+        return result.rows;
+    }
+
+    async update(id, userId, originalName, folderId) {
+        const result = await db.query(
+            `UPDATE files 
+             SET original_name = COALESCE($1, original_name), 
+                 folder_id = COALESCE($2, folder_id),
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = $3 AND user_id = $4 AND is_deleted = false
+             RETURNING *`,
+            [originalName, folderId, id, userId]
+        );
+        return result.rows[0];
+    }
+
+    async softDelete(id, userId) {
+        const result = await db.query(
+            `UPDATE files 
+             SET is_deleted = true 
+             WHERE id = $1 AND user_id = $2 
+             RETURNING *`,
+            [id, userId]
+        );
+        return result.rows[0];
+    }
+
+    async findTrashedByUser(userId) {
+        const result = await db.query(
+            `SELECT * FROM files WHERE user_id = $1 AND is_deleted = true`,
+            [userId]
+        );
+        return result.rows;
+    }
+
+    async restore(id, userId) {
+        const result = await db.query(
+            `UPDATE files 
+             SET is_deleted = false 
+             WHERE id = $1 AND user_id = $2 
+             RETURNING *`,
+            [id, userId]
+        );
+        return result.rows[0];
+    }
+
+    async hardDelete(id, userId) {
+        await db.query(
+            `DELETE FROM files WHERE id = $1 AND user_id = $2`,
+            [id, userId]
+        );
+    }
+}
+
+module.exports = new FileRepository();
