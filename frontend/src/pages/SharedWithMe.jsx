@@ -175,7 +175,8 @@ export default function SharedWithMe() {
     };
 
     const handleCopyShareLink = (share) => {
-        const link = `${window.location.origin}/s/${share.token}`;
+        const token = share.token || share.id;
+        const link = `${window.location.origin}/s/${token}`;
         navigator.clipboard.writeText(link);
         setCopiedShareId(share.id);
         setTimeout(() => setCopiedShareId(null), 3000);
@@ -437,17 +438,15 @@ export default function SharedWithMe() {
 
                                                 {/* Desktop Action Buttons */}
                                                 <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 1 }}>
-                                                    {share.token && (
-                                                        <Button 
-                                                            variant="outlined" 
-                                                            size="small"
-                                                            color={copiedShareId === share.id ? "success" : "primary"}
-                                                            startIcon={<CopyIcon />}
-                                                            onClick={() => handleCopyShareLink(share)}
-                                                        >
-                                                            {copiedShareId === share.id ? 'Copied!' : 'Copy Link'}
-                                                        </Button>
-                                                    )}
+                                                    <Button 
+                                                        variant="outlined" 
+                                                        size="small"
+                                                        color={copiedShareId === share.id ? "success" : "primary"}
+                                                        startIcon={<CopyIcon />}
+                                                        onClick={() => handleCopyShareLink(share)}
+                                                    >
+                                                        {copiedShareId === share.id ? 'Copied!' : 'Copy Link'}
+                                                    </Button>
 
                                                     <Button 
                                                         variant="outlined" 
@@ -464,7 +463,7 @@ export default function SharedWithMe() {
                                                 <Box sx={{ display: { xs: 'block', md: 'none' } }}>
                                                     <SharedCardActionsMenu 
                                                         isFile={false}
-                                                        onCopyLink={share.token ? () => handleCopyShareLink(share) : null}
+                                                        onCopyLink={() => handleCopyShareLink(share)}
                                                         onDelete={() => revokeSentShareMutation.mutate(share.id)}
                                                         deleteText="Revoke Access"
                                                     />

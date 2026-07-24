@@ -12,7 +12,7 @@ class ShareRepository {
 
     async findByToken(token) {
         const result = await db.query(
-            `SELECT * FROM shares WHERE token = $1`,
+            `SELECT * FROM shares WHERE token = $1 OR id::text = $1`,
             [token]
         );
         return result.rows[0];
