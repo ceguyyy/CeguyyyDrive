@@ -11,6 +11,8 @@ const versionRoutes = require('./version.routes');
 const analyticsRoutes = require('./analytics.routes');
 const activityRoutes = require('./activity.routes');
 const userRoutes = require('./user.routes');
+const notificationRoutes = require('./notification.routes');
+
 const router = express.Router();
 
 router.get('/health', (req, res) => {
@@ -31,6 +33,7 @@ router.use('/search', searchRoutes);
 router.use('/analytics', analyticsRoutes);
 router.use('/activity', activityRoutes);
 router.use('/users', userRoutes);
+router.use('/notifications', notificationRoutes);
 router.use('/', versionRoutes); // Mounts /files/:fileId/versions and /versions/:id
 
 module.exports = router;

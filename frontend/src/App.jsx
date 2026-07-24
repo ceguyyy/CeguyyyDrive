@@ -10,6 +10,8 @@ import Trash from './pages/Trash';
 import PublicShare from './pages/PublicShare';
 import ChatPage from './pages/ChatPage';
 
+import SharedWithMe from './pages/SharedWithMe';
+
 const ProtectedRoute = ({ children }) => {
     const { token } = useAuthStore();
     
@@ -40,7 +42,7 @@ export default function App() {
                 <Route index element={<Navigate to="/drive" replace />} />
                 <Route path="drive" element={<Dashboard />} />
                 <Route path="drive/folders/:folderId" element={<Dashboard />} />
-                <Route path="shared" element={<div className="p-8 font-bold text-xl">Shared (Coming Soon)</div>} />
+                <Route path="shared" element={<SharedWithMe />} />
                 <Route path="trash" element={<Trash />} />
                 <Route path="chat" element={<ChatPage />} />
             </Route>

@@ -6,6 +6,7 @@ import api from '../../services/api';
 import ContextMenu from '../../components/ui/ContextMenu';
 import RenameModal from '../../components/modals/RenameModal';
 import FilePreviewModal from '../../components/modals/FilePreviewModal';
+import ShareModal from '../../components/modals/ShareModal';
 import { useItemActions } from '../../hooks/useItemActions';
 
 function formatBytes(bytes) {
@@ -19,7 +20,8 @@ function formatBytes(bytes) {
 export default function FileCard({ file, selected = false, onSelect = () => {}, selectionMode = false, onCopyItem, onCutItem }) {
     const [isRenameOpen, setIsRenameOpen] = useState(false);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-    const { renameFile, deleteFile, shareFile } = useItemActions(file.folder_id);
+    const [isShareOpen, setIsShareOpen] = useState(false);
+    const { renameFile, deleteFile } = useItemActions(file.folder_id);
 
     const displayName = file.original_name || file.name;
     const isImage = file.mime_type?.startsWith('image/');
@@ -116,7 +118,7 @@ export default function FileCard({ file, selected = false, onSelect = () => {}, 
                     <ContextMenu 
                         onRename={() => setIsRenameOpen(true)}
                         onDelete={() => deleteFile.mutate(file.id)}
-                        onShare={() => shareFile.mutate(file.id)}
+                        onShare={() => setIsShareOpen(true)}
                         onCopy={() => onCopyItem?.('file', file.id)}
                         onCut={() => onCutItem?.('file', file.id)}
                     />
@@ -134,6 +136,14 @@ export default function FileCard({ file, selected = false, onSelect = () => {}, 
                 isOpen={isPreviewOpen}
                 onClose={() => setIsPreviewOpen(false)}
                 file={file}
+            />
+
+            <ShareModal
+                isOpen={isShareOpen}
+                onClose={() => setIsShareOpen(false)}
+                itemType="file"
+                itemId={file.id}
+                itemName={displayName}
             />
         </>
     );

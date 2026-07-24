@@ -72,7 +72,7 @@ export default function ContextMenu({ onRename, onDelete, onShare, onCopy, onCut
                 {onShare && (
                     <MenuItem onClick={(e) => { handleClose(e); onShare(); }}>
                         <ListItemIcon><ShareIcon fontSize="small" /></ListItemIcon>
-                        <ListItemText>Share Link</ListItemText>
+                        <ListItemText>Share</ListItemText>
                     </MenuItem>
                 )}
                 

@@ -1,10 +1,23 @@
 import React, { useState } from 'react';
 import { useAuthStore } from '../../store/authStore';
-import { useSearchParams } from 'react-router-dom';
-import { AppBar, Toolbar, InputBase, Avatar, Box, IconButton, Badge, Popover, Typography, List, ListItem, LinearProgress } from '@mui/material';
-import { Search as SearchIcon, Notifications as NotificationsIcon, CheckCircle as CheckCircleIcon, Error as ErrorIcon } from '@mui/icons-material';
-import { styled, alpha } from '@mui/material/styles';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { 
+    AppBar, Toolbar, InputBase, Avatar, Box, IconButton, 
+    Badge, Popover, Typography, List, ListItem, LinearProgress,
+    Tabs, Tab, Button, Divider 
+} from '@mui/material';
+import { 
+    Search as SearchIcon, 
+    Notifications as NotificationsIcon, 
+    CheckCircle as CheckCircleIcon, 
+    Error as ErrorIcon,
+    Group as SharedIcon,
+    MarkEmailRead as MarkReadIcon
+} from '@mui/icons-material';
+import { styled } from '@mui/material/styles';
 import { useUploadStore } from '../../store/uploadStore';
+import api from '../../services/api';
 
 const Search = styled('div')(({ theme }) => ({
   position: 'relative',
@@ -54,12 +67,43 @@ const StyledInputBase = styled(InputBase)(({ theme }) => ({
 export default function Header() {
     const user = useAuthStore(state => state.user);
     const [searchParams, setSearchParams] = useSearchParams();
+    const navigate = useNavigate();
+    const queryClient = useQueryClient();
     
-    // Notifications State
+    // Uploads State
     const { uploads, removeUpload } = useUploadStore();
-    const uploadList = Object.entries(uploads).reverse(); // show newest first
+    const uploadList = Object.entries(uploads).reverse();
     const activeUploads = uploadList.filter(([, u]) => u.status === 'uploading').length;
 
+    // Notifications Query
+    const { data: notificationData } = useQuery({
+        queryKey: ['notifications'],
+        queryFn: async () => {
+            const res = await api.get('/notifications');
+            return res.data.data;
+        },
+        refetchInterval: 10000 // Polling every 10 seconds for real-time notifications
+    });
+
+    const notifications = notificationData?.notifications || [];
+    const unreadCount = notificationData?.unreadCount || 0;
+    const totalBadgeCount = activeUploads + unreadCount;
+
+    const markAsReadMutation = useMutation({
+        mutationFn: async (id) => {
+            await api.put(`/notifications/${id}/read`);
+        },
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notifications'] })
+    });
+
+    const markAllReadMutation = useMutation({
+        mutationFn: async () => {
+            await api.put('/notifications/read-all');
+        },
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notifications'] })
+    });
+
+    const [popoverTab, setPopoverTab] = useState(0); // 0: Notifications, 1: Uploads
     const [anchorEl, setAnchorEl] = useState(null);
     const handleNotificationClick = (event) => setAnchorEl(event.currentTarget);
     const handleNotificationClose = () => setAnchorEl(null);
@@ -72,6 +116,16 @@ export default function Header() {
         } else {
             searchParams.delete('q');
             setSearchParams(searchParams);
+        }
+    };
+
+    const handleNotificationItemClick = (notif) => {
+        if (!notif.is_read) {
+            markAsReadMutation.mutate(notif.id);
+        }
+        if (notif.link) {
+            navigate(notif.link);
+            handleNotificationClose();
         }
     };
 
@@ -92,7 +146,7 @@ export default function Header() {
                 <Box sx={{ flexGrow: 1 }} />
                 
                 <IconButton color="inherit" onClick={handleNotificationClick} sx={{ mr: 2, color: 'text.secondary' }}>
-                    <Badge badgeContent={activeUploads} color="primary">
+                    <Badge badgeContent={totalBadgeCount} color="primary">
                         <NotificationsIcon />
                     </Badge>
                 </IconButton>
@@ -104,32 +158,91 @@ export default function Header() {
                     anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
                     transformOrigin={{ vertical: 'top', horizontal: 'right' }}
                 >
-                    <Box sx={{ p: 2, width: 320, maxHeight: 400, overflowY: 'auto' }}>
-                        <Typography variant="h6" sx={{ mb: 2, fontSize: '1rem', fontWeight: 'bold' }}>Upload Logs</Typography>
-                        {uploadList.length === 0 ? (
-                            <Typography variant="body2" color="text.secondary">No recent uploads</Typography>
-                        ) : (
-                            <List disablePadding>
-                                {uploadList.map(([id, upload]) => (
-                                    <ListItem key={id} disablePadding sx={{ mb: 2, flexDirection: 'column', alignItems: 'stretch' }}>
-                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                                            <Typography variant="body2" noWrap sx={{ pr: 1, flexGrow: 1 }}>{upload.name}</Typography>
-                                            {upload.status === 'success' && <CheckCircleIcon color="success" fontSize="small" />}
-                                            {upload.status === 'error' && <ErrorIcon color="error" fontSize="small" />}
-                                            {upload.status === 'uploading' && <Typography variant="caption" fontWeight="bold">{upload.progress}%</Typography>}
+                    <Box sx={{ width: 360, maxHeight: 440, display: 'flex', flexDirection: 'column' }}>
+                        <Tabs value={popoverTab} onChange={(_, v) => setPopoverTab(v)} variant="fullWidth" sx={{ borderBottom: '1px solid #EAEAEA' }}>
+                            <Tab label={`Inbox (${unreadCount})`} />
+                            <Tab label={`Uploads (${uploadList.length})`} />
+                        </Tabs>
+
+                        <Box sx={{ p: 2, flex: 1, overflowY: 'auto' }}>
+                            {popoverTab === 0 && (
+                                <>
+                                    {unreadCount > 0 && (
+                                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
+                                            <Button size="small" startIcon={<MarkReadIcon fontSize="small" />} onClick={() => markAllReadMutation.mutate()}>
+                                                Mark all read
+                                            </Button>
                                         </Box>
-                                        {upload.status === 'uploading' && (
-                                            <LinearProgress variant="determinate" value={upload.progress} sx={{ height: 4, borderRadius: 2 }} />
-                                        )}
-                                        {(upload.status === 'success' || upload.status === 'error') && (
-                                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }} onClick={() => removeUpload(id)}>
-                                                Dismiss
-                                            </Typography>
-                                        )}
-                                    </ListItem>
-                                ))}
-                            </List>
-                        )}
+                                    )}
+
+                                    {notifications.length === 0 ? (
+                                        <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ py: 3 }}>
+                                            No inbox notifications
+                                        </Typography>
+                                    ) : (
+                                        <List disablePadding>
+                                            {notifications.map(n => (
+                                                <ListItem
+                                                    key={n.id}
+                                                    button
+                                                    onClick={() => handleNotificationItemClick(n)}
+                                                    sx={{ 
+                                                        mb: 1, borderRadius: 1.5, 
+                                                        bgcolor: n.is_read ? 'transparent' : 'rgba(25, 118, 210, 0.06)',
+                                                        border: n.is_read ? '1px solid #EAEAEA' : '1px solid #1976d2',
+                                                        display: 'flex', alignItems: 'flex-start', p: 1.25
+                                                    }}
+                                                >
+                                                    <SharedIcon sx={{ color: 'primary.main', mr: 1.5, mt: 0.25 }} fontSize="small" />
+                                                    <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                                                        <Typography variant="body2" fontWeight={n.is_read ? 500 : 700} noWrap>
+                                                            {n.title}
+                                                        </Typography>
+                                                        <Typography variant="caption" color="text.secondary" display="block" sx={{ my: 0.25 }}>
+                                                            {n.message}
+                                                        </Typography>
+                                                        <Typography variant="caption" color="text.disabled">
+                                                            {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        </Typography>
+                                                    </Box>
+                                                </ListItem>
+                                            ))}
+                                        </List>
+                                    )}
+                                </>
+                            )}
+
+                            {popoverTab === 1 && (
+                                <>
+                                    {uploadList.length === 0 ? (
+                                        <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ py: 3 }}>
+                                            No recent uploads
+                                        </Typography>
+                                    ) : (
+                                        <List disablePadding>
+                                            {uploadList.map(([id, upload]) => (
+                                                <ListItem key={id} disablePadding sx={{ mb: 2, flexDirection: 'column', alignItems: 'stretch' }}>
+                                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                                                        <Typography variant="body2" noWrap sx={{ pr: 1, flexGrow: 1 }}>{upload.name}</Typography>
+                                                        {upload.status === 'success' && <CheckCircleIcon color="success" fontSize="small" />}
+                                                        {upload.status === 'error' && <ErrorIcon color="error" fontSize="small" />}
+                                                        {upload.status === 'uploading' && <Typography variant="caption" fontWeight="bold">{upload.progress}%</Typography>}
+                                                    </Box>
+                                                    {upload.status === 'uploading' && (
+                                                        <LinearProgress variant="determinate" value={upload.progress} sx={{ height: 4, borderRadius: 2 }} />
+                                                    )}
+                                                    {(upload.status === 'success' || upload.status === 'error') && (
+                                                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }} onClick={() => removeUpload(id)}>
+                                                            Dismiss
+                                                        </Typography>
+                                                    )}
+                                                </ListItem>
+                                            ))}
+                                        </List>
+                                    )}
+                                </>
+                            )}
+                        </Box>
                     </Box>
                 </Popover>
             </Toolbar>

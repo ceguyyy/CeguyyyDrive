@@ -45,7 +45,7 @@ export default function Trash() {
     return (
         <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-                <Typography variant="h4" fontWeight="bold">
+                <Typography color="text.primary" sx={{ fontSize: '1.25rem', fontWeight: 700 }}>
                     Trash Bin
                 </Typography>
                 <Button 

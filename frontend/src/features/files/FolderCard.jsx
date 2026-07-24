@@ -5,10 +5,12 @@ import { Folder as FolderIcon } from '@mui/icons-material';
 import { Card, CardActionArea, CardContent, Typography, Box, Checkbox } from '@mui/material';
 import ContextMenu from '../../components/ui/ContextMenu';
 import RenameModal from '../../components/modals/RenameModal';
+import ShareModal from '../../components/modals/ShareModal';
 import { useItemActions } from '../../hooks/useItemActions';
 
 export default function FolderCard({ folder, selected = false, onSelect = () => {}, selectionMode = false, onCopyItem, onCutItem }) {
     const [isRenameOpen, setIsRenameOpen] = useState(false);
+    const [isShareOpen, setIsShareOpen] = useState(false);
     const { renameFolder, deleteFolder, moveFile, moveFolder } = useItemActions(folder.parent_id);
     const navigate = useNavigate();
     const [isDragOver, setIsDragOver] = useState(false);
@@ -101,6 +103,7 @@ export default function FolderCard({ folder, selected = false, onSelect = () => 
                         <ContextMenu 
                             onRename={() => setIsRenameOpen(true)}
                             onDelete={() => deleteFolder.mutate(folder.id)}
+                            onShare={() => setIsShareOpen(true)}
                             onCopy={() => onCopyItem?.('folder', folder.id)}
                             onCut={() => onCutItem?.('folder', folder.id)}
                         />
@@ -113,6 +116,14 @@ export default function FolderCard({ folder, selected = false, onSelect = () => 
                 currentName={folder.name}
                 onClose={() => setIsRenameOpen(false)}
                 onSave={(newName) => renameFolder.mutate({ id: folder.id, newName })}
+            />
+
+            <ShareModal
+                isOpen={isShareOpen}
+                onClose={() => setIsShareOpen(false)}
+                itemType="folder"
+                itemId={folder.id}
+                itemName={folder.name}
             />
         </>
     );
