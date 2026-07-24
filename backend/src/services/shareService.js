@@ -145,10 +145,22 @@ class ShareService {
         return await shareRepository.findReceivedShares(userId);
     }
 
+    async getSentShares(userId) {
+        return await shareRepository.findSentShares(userId);
+    }
+
     async revokeShare(id, userId) {
         const deleted = await shareRepository.delete(id, userId);
         if (!deleted) {
             throw new AppError('Share not found', 404);
+        }
+        return deleted;
+    }
+
+    async removeReceivedShare(id, recipientUserId) {
+        const deleted = await shareRepository.deleteByRecipient(id, recipientUserId);
+        if (!deleted) {
+            throw new AppError('Shared item not found or already removed', 404);
         }
         return deleted;
     }

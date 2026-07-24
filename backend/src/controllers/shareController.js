@@ -70,10 +70,35 @@ exports.getSharedWithMe = async (req, res, next) => {
     }
 };
 
+exports.getSharedByMe = async (req, res, next) => {
+    try {
+        const shares = await shareService.getSentShares(req.user.id);
+        
+        res.status(200).json({
+            status: 'success',
+            results: shares.length,
+            data: { shares }
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
 exports.revokeShare = async (req, res, next) => {
     try {
         const id = req.params.id;
         await shareService.revokeShare(id, req.user.id);
+        
+        res.status(204).send();
+    } catch (err) {
+        next(err);
+    }
+};
+
+exports.removeReceivedShare = async (req, res, next) => {
+    try {
+        const id = req.params.id;
+        await shareService.removeReceivedShare(id, req.user.id);
         
         res.status(204).send();
     } catch (err) {

@@ -18,6 +18,18 @@ class FileRepository {
         return result.rows[0];
     }
 
+    async findAccessibleById(id, userId) {
+        const result = await db.query(
+            `SELECT f.* FROM files f
+             LEFT JOIN shares s ON f.id = s.file_id
+             WHERE f.id = $1 AND f.is_deleted = false
+               AND (f.user_id = $2 OR s.shared_with = $2 OR s.is_public = true)
+             LIMIT 1`,
+            [id, userId]
+        );
+        return result.rows[0];
+    }
+
     async findByNameAndFolder(name, folderId, userId) {
         let query = `SELECT * FROM files WHERE name = $1 AND user_id = $2 AND is_deleted = false `;
         const params = [name, userId];

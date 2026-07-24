@@ -50,6 +50,14 @@ class FileService {
         return file;
     }
 
+    async getAccessibleFile(id, userId) {
+        const file = await fileRepository.findAccessibleById(id, userId);
+        if (!file) {
+            throw new AppError('File not found', 404);
+        }
+        return file;
+    }
+
     async updateFile(id, userId, originalName, folderId) {
         const file = await fileRepository.findByIdAndUser(id, userId);
         if (!file) {
@@ -80,8 +88,8 @@ class FileService {
     }
 
     async copyFile(id, userId, destinationFolderId = null) {
-        // 1. Get the original file
-        const file = await this.getFile(id, userId);
+        // 1. Get the file (either owned or accessible via share)
+        const file = await this.getAccessibleFile(id, userId);
         
         // 2. Generate a new storage key
         const newStorageKey = cosService.generateObjectKey(userId, file.original_name);
@@ -89,7 +97,7 @@ class FileService {
         // 3. Copy the object in COS
         await cosService.copyObject(file.storage_key, newStorageKey);
         
-        // 4. Create the file record in the destination folder (auto-rename will handle duplicates)
+        // 4. Create the file record in the destination folder
         return await this.createFileRecord(
             file.original_name,
             file.size,

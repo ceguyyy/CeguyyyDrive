@@ -56,10 +56,35 @@ class ShareRepository {
         return result.rows;
     }
 
+    async findSentShares(userId) {
+        const result = await db.query(
+            `SELECT s.*, 
+                    u.full_name as recipient_name, u.email as recipient_email,
+                    f.original_name as file_name, f.mime_type, f.size,
+                    fd.name as folder_name
+             FROM shares s
+             LEFT JOIN users u ON s.shared_with = u.id
+             LEFT JOIN files f ON s.file_id = f.id AND f.is_deleted = false
+             LEFT JOIN folders fd ON s.folder_id = fd.id AND fd.is_deleted = false
+             WHERE s.shared_by = $1
+             ORDER BY s.created_at DESC`,
+            [userId]
+        );
+        return result.rows;
+    }
+
     async delete(id, userId) {
         const result = await db.query(
             `DELETE FROM shares WHERE id = $1 AND shared_by = $2 RETURNING *`,
             [id, userId]
+        );
+        return result.rows[0];
+    }
+
+    async deleteByRecipient(id, recipientUserId) {
+        const result = await db.query(
+            `DELETE FROM shares WHERE id = $1 AND shared_with = $2 RETURNING *`,
+            [id, recipientUserId]
         );
         return result.rows[0];
     }
