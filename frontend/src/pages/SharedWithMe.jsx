@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
     Box, Typography, CircularProgress, Alert, Card, 
-    CardContent, Button, Stack, Avatar, Chip, Tabs, Tab 
+    CardContent, Button, Stack, Avatar, Chip, Tabs, Tab,
+    IconButton, Menu, MenuItem, ListItemIcon, ListItemText, Tooltip
 } from '@mui/material';
 import { 
     Group as SharedIcon, 
@@ -12,7 +13,9 @@ import {
     Visibility as PreviewIcon,
     ContentCopy as CopyIcon,
     Delete as DeleteIcon,
-    Send as SendIcon
+    Send as SendIcon,
+    MoreVert as MoreVertIcon,
+    Refresh as RefreshIcon
 } from '@mui/icons-material';
 import api from '../services/api';
 import FilePreviewModal from '../components/modals/FilePreviewModal';
@@ -25,6 +28,54 @@ function formatBytes(bytes) {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
+function SharedCardActionsMenu({ onPreview, onDownload, onCopyToDrive, onDelete, deleteText = 'Remove', isFile = false }) {
+    const [anchorEl, setAnchorEl] = useState(null);
+    const open = Boolean(anchorEl);
+
+    const handleClick = (e) => {
+        e.stopPropagation();
+        setAnchorEl(e.currentTarget);
+    };
+
+    const handleClose = () => {
+        setAnchorEl(null);
+    };
+
+    return (
+        <>
+            <IconButton size="small" onClick={handleClick} aria-label="actions menu">
+                <MoreVertIcon />
+            </IconButton>
+            <Menu anchorEl={anchorEl} open={open} onClose={handleClose} onClick={(e) => e.stopPropagation()}>
+                {isFile && onPreview && (
+                    <MenuItem onClick={() => { handleClose(); onPreview(); }}>
+                        <ListItemIcon><PreviewIcon fontSize="small" /></ListItemIcon>
+                        <ListItemText>Preview</ListItemText>
+                    </MenuItem>
+                )}
+                {isFile && onDownload && (
+                    <MenuItem onClick={() => { handleClose(); onDownload(); }}>
+                        <ListItemIcon><DownloadIcon fontSize="small" /></ListItemIcon>
+                        <ListItemText>Download</ListItemText>
+                    </MenuItem>
+                )}
+                {onCopyToDrive && (
+                    <MenuItem onClick={() => { handleClose(); onCopyToDrive(); }}>
+                        <ListItemIcon><CopyIcon fontSize="small" /></ListItemIcon>
+                        <ListItemText>Copy to My Drive</ListItemText>
+                    </MenuItem>
+                )}
+                {onDelete && (
+                    <MenuItem onClick={() => { handleClose(); onDelete(); }} sx={{ color: 'error.main' }}>
+                        <ListItemIcon><DeleteIcon fontSize="small" color="error" /></ListItemIcon>
+                        <ListItemText>{deleteText}</ListItemText>
+                    </MenuItem>
+                )}
+            </Menu>
+        </>
+    );
+}
+
 export default function SharedWithMe() {
     const [tab, setTab] = useState(0); // 0: Shared with me, 1: Shared by me
     const [previewFile, setPreviewFile] = useState(null);
@@ -32,7 +83,7 @@ export default function SharedWithMe() {
     const queryClient = useQueryClient();
 
     // Query 1: Shared with me (Received)
-    const { data: receivedData, isLoading: isReceivedLoading, error: receivedError } = useQuery({
+    const { data: receivedData, isLoading: isReceivedLoading, error: receivedError, refetch: refetchReceived, isRefetching: isReceivedRefetching } = useQuery({
         queryKey: ['shared-with-me'],
         queryFn: async () => {
             const res = await api.get('/shares/received');
@@ -41,7 +92,7 @@ export default function SharedWithMe() {
     });
 
     // Query 2: Shared by me (Sent)
-    const { data: sentData, isLoading: isSentLoading, error: sentError } = useQuery({
+    const { data: sentData, isLoading: isSentLoading, error: sentError, refetch: refetchSent, isRefetching: isSentRefetching } = useQuery({
         queryKey: ['shared-by-me'],
         queryFn: async () => {
             const res = await api.get('/shares/sent');
@@ -116,16 +167,34 @@ export default function SharedWithMe() {
     };
 
     const isLoading = tab === 0 ? isReceivedLoading : isSentLoading;
+    const isRefetching = tab === 0 ? isReceivedRefetching : isSentRefetching;
     const error = tab === 0 ? receivedError : sentError;
     const receivedShares = receivedData || [];
     const sentShares = sentData || [];
 
+    const handleRefresh = () => {
+        if (tab === 0) refetchReceived();
+        else refetchSent();
+    };
+
     return (
         <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-                <Typography color="text.primary" sx={{ fontSize: '1.25rem', fontWeight: 700 }}>
-                    Sharing Management
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography color="text.primary" sx={{ fontSize: '1.25rem', fontWeight: 700 }}>
+                        Sharing Management
+                    </Typography>
+                    <Tooltip title="Refresh">
+                        <IconButton 
+                            size="small" 
+                            onClick={handleRefresh} 
+                            disabled={isRefetching}
+                            sx={{ color: 'text.secondary' }}
+                        >
+                            <RefreshIcon fontSize="small" sx={{ transform: isRefetching ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }} />
+                        </IconButton>
+                    </Tooltip>
+                </Box>
             </Box>
 
             <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 3, borderBottom: '1px solid #EAEAEA' }}>
@@ -206,7 +275,8 @@ export default function SharedWithMe() {
                                                     </Box>
                                                 </Box>
 
-                                                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                                                {/* Desktop Quick Action Buttons */}
+                                                <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 1 }}>
                                                     {isFile && (
                                                         <>
                                                             <Button 
@@ -253,6 +323,23 @@ export default function SharedWithMe() {
                                                     >
                                                         Remove
                                                     </Button>
+                                                </Box>
+
+                                                {/* Always Available / Mobile 3-Dot Menu */}
+                                                <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                                                    <SharedCardActionsMenu 
+                                                        isFile={isFile}
+                                                        onPreview={isFile ? () => setPreviewFile({
+                                                            id: share.file_id,
+                                                            original_name: share.file_name,
+                                                            mime_type: share.mime_type,
+                                                            size: share.size
+                                                        }) : null}
+                                                        onDownload={isFile ? () => handleDownload(share) : null}
+                                                        onCopyToDrive={() => handleCopyToDrive(share)}
+                                                        onDelete={() => removeReceivedShareMutation.mutate(share.id)}
+                                                        deleteText="Remove"
+                                                    />
                                                 </Box>
                                             </CardContent>
                                         </Card>
@@ -321,15 +408,27 @@ export default function SharedWithMe() {
                                                     </Box>
                                                 </Box>
 
-                                                <Button 
-                                                    variant="outlined" 
-                                                    size="small"
-                                                    color="error"
-                                                    startIcon={<DeleteIcon />}
-                                                    onClick={() => revokeSentShareMutation.mutate(share.id)}
-                                                >
-                                                    Revoke Access
-                                                </Button>
+                                                {/* Desktop Button */}
+                                                <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+                                                    <Button 
+                                                        variant="outlined" 
+                                                        size="small"
+                                                        color="error"
+                                                        startIcon={<DeleteIcon />}
+                                                        onClick={() => revokeSentShareMutation.mutate(share.id)}
+                                                    >
+                                                        Revoke Access
+                                                    </Button>
+                                                </Box>
+
+                                                {/* Mobile 3-Dot Menu */}
+                                                <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                                                    <SharedCardActionsMenu 
+                                                        isFile={false}
+                                                        onDelete={() => revokeSentShareMutation.mutate(share.id)}
+                                                        deleteText="Revoke Access"
+                                                    />
+                                                </Box>
                                             </CardContent>
                                         </Card>
                                     );

@@ -4,7 +4,8 @@ import {
     Restore as RestoreIcon, 
     Warning as WarningIcon, 
     Folder as FolderIcon, 
-    InsertDriveFile as DocumentIcon 
+    InsertDriveFile as DocumentIcon,
+    Refresh as RefreshIcon
 } from '@mui/icons-material';
 import api from '../services/api';
 import { useTrashActions } from '../hooks/useTrashActions';
@@ -16,7 +17,7 @@ import ConfirmModal from '../components/modals/ConfirmModal';
 
 export default function Trash() {
     const [isConfirmOpen, setIsConfirmOpen] = React.useState(false);
-    const { data, isLoading, error } = useQuery({
+    const { data, isLoading, error, refetch, isRefetching } = useQuery({
         queryKey: ['trash'],
         queryFn: async () => {
             const res = await api.get('/trash');
@@ -45,9 +46,21 @@ export default function Trash() {
     return (
         <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-                <Typography color="text.primary" sx={{ fontSize: '1.25rem', fontWeight: 700 }}>
-                    Trash Bin
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography color="text.primary" sx={{ fontSize: '1.25rem', fontWeight: 700 }}>
+                        Trash Bin
+                    </Typography>
+                    <Tooltip title="Refresh">
+                        <IconButton 
+                            size="small" 
+                            onClick={() => refetch()} 
+                            disabled={isRefetching}
+                            sx={{ color: 'text.secondary' }}
+                        >
+                            <RefreshIcon fontSize="small" sx={{ transform: isRefetching ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }} />
+                        </IconButton>
+                    </Tooltip>
+                </Box>
                 <Button 
                     variant="contained" 
                     color="error"

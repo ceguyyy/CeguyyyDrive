@@ -3,8 +3,8 @@ import { useParams, Link as RouterLink, useSearchParams } from 'react-router-dom
 import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
 import FileGrid from '../features/files/FileGrid';
-import { Typography, Box, CircularProgress, Alert, Breadcrumbs, Link, Button, IconButton, Select, MenuItem, Pagination, Fab } from '@mui/material';
-import { NavigateNext as NavigateNextIcon, CloudUpload as CloudUploadIcon, Delete as DeleteIcon, Sort as SortIcon, ArrowUpward, ArrowDownward, Download as DownloadIcon, ContentPaste as ContentPasteIcon, Close as CloseIcon, ContentCopy as CopyIcon, ContentCut as CutIcon, DriveFileMove as DriveFileMoveIcon } from '@mui/icons-material';
+import { Typography, Box, CircularProgress, Alert, Breadcrumbs, Link, Button, IconButton, Select, MenuItem, Pagination, Fab, Tooltip } from '@mui/material';
+import { NavigateNext as NavigateNextIcon, CloudUpload as CloudUploadIcon, Delete as DeleteIcon, Sort as SortIcon, ArrowUpward, ArrowDownward, Download as DownloadIcon, ContentPaste as ContentPasteIcon, Close as CloseIcon, ContentCopy as CopyIcon, ContentCut as CutIcon, DriveFileMove as DriveFileMoveIcon, Refresh as RefreshIcon } from '@mui/icons-material';
 import { useUpload } from '../hooks/useUpload';
 import { useItemActions } from '../hooks/useItemActions';
 import { useClipboardStore } from '../store/clipboardStore';
@@ -58,7 +58,7 @@ export default function Dashboard() {
     // Reset pagination when folder changes
     React.useEffect(() => { setVisibleItems(20); }, [currentFolderId, sortBy, sortOrder, searchQuery]);
 
-    const { data, isLoading, error } = useQuery({
+    const { data, isLoading, error, refetch, isRefetching } = useQuery({
         queryKey: ['folders', currentFolderId],
         queryFn: async () => {
             const res = await api.get(`/folders/${currentFolderId}`);
@@ -339,7 +339,8 @@ export default function Dashboard() {
                         </Button>
                     </Box>
                 ) : (
-                    <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />} aria-label="breadcrumb">
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />} aria-label="breadcrumb">
                         <Link 
                             component={RouterLink} 
                             to="/drive" 
@@ -397,6 +398,17 @@ export default function Dashboard() {
                             </Typography>
                         )}
                     </Breadcrumbs>
+                    <Tooltip title="Refresh">
+                        <IconButton 
+                            size="small" 
+                            onClick={() => refetch()} 
+                            disabled={isRefetching}
+                            sx={{ color: 'text.secondary' }}
+                        >
+                            <RefreshIcon fontSize="small" sx={{ transform: isRefetching ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }} />
+                        </IconButton>
+                    </Tooltip>
+                </Box>
                 )}
 
                 {!isSelectionActive && (
