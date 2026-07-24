@@ -11,7 +11,7 @@ import {
     ArrowBack as ArrowBackIcon
 } from '@mui/icons-material';
 import { 
-    Box, Typography, Button, CircularProgress, Card, CardContent, Container, Stack, Alert 
+    Box, Typography, Button, CircularProgress, Card, Container, Stack, Alert 
 } from '@mui/material';
 import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
@@ -132,22 +132,26 @@ export default function PublicShare() {
                 <Stack spacing={2} sx={{ width: '100%' }}>
                     {isFile && downloadUrl && (
                         <>
-                            <Button 
-                                variant="outlined"
-                                color="primary"
-                                size="large"
-                                startIcon={<PreviewIcon />}
-                                onClick={() => setPreviewFile({
-                                    id: item.id,
-                                    original_name: item.name,
-                                    mime_type: item.mime_type,
-                                    size: item.size
-                                })}
-                                sx={{ py: 1.5, fontWeight: 'bold' }}
-                            >
-                                Preview File
-                            </Button>
+                            {/* Render Preview File button only if logged in */}
+                            {authToken && (
+                                <Button 
+                                    variant="outlined"
+                                    color="primary"
+                                    size="large"
+                                    startIcon={<PreviewIcon />}
+                                    onClick={() => setPreviewFile({
+                                        id: item.id,
+                                        original_name: item.name,
+                                        mime_type: item.mime_type,
+                                        size: item.size
+                                    })}
+                                    sx={{ py: 1.5, fontWeight: 'bold' }}
+                                >
+                                    Preview File
+                                </Button>
+                            )}
 
+                            {/* Download File Button (Always available for guests and logged-in users) */}
                             <Button 
                                 href={downloadUrl} 
                                 target="_blank" 
@@ -163,21 +167,20 @@ export default function PublicShare() {
                         </>
                     )}
 
-                    <Button 
-                        variant={isFile ? "outlined" : "contained"}
-                        color="secondary"
-                        size="large"
-                        startIcon={copyToDriveMutation.isPending ? <CircularProgress size={20} color="inherit" /> : <CopyIcon />}
-                        onClick={handleCopyToDrive}
-                        disabled={copyToDriveMutation.isPending}
-                        sx={{ py: 1.5, fontWeight: 'bold' }}
-                    >
-                        {copyToDriveMutation.isPending 
-                            ? 'Copying to Drive...' 
-                            : authToken 
-                                ? 'Copy to My Drive' 
-                                : 'Log in to Save to My Drive'}
-                    </Button>
+                    {/* Copy to My Drive button (Rendered only if logged in) */}
+                    {authToken && (
+                        <Button 
+                            variant="outlined"
+                            color="secondary"
+                            size="large"
+                            startIcon={copyToDriveMutation.isPending ? <CircularProgress size={20} color="inherit" /> : <CopyIcon />}
+                            onClick={handleCopyToDrive}
+                            disabled={copyToDriveMutation.isPending}
+                            sx={{ py: 1.5, fontWeight: 'bold' }}
+                        >
+                            {copyToDriveMutation.isPending ? 'Copying to Drive...' : 'Copy to My Drive'}
+                        </Button>
+                    )}
                 </Stack>
 
                 {previewFile && (
