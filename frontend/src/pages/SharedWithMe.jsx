@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { 
-    Box, Typography, CircularProgress, Alert, Card, 
+import {
+    Box, Typography, CircularProgress, Alert, Card,
     CardContent, Button, Stack, Avatar, Chip, Tabs, Tab,
     IconButton, Menu, MenuItem, ListItemIcon, ListItemText, Tooltip
 } from '@mui/material';
-import { 
-    Group as SharedIcon, 
-    InsertDriveFile as FileIcon, 
+import {
+    Group as SharedIcon,
+    InsertDriveFile as FileIcon,
     Folder as FolderIcon,
     Download as DownloadIcon,
     Visibility as PreviewIcon,
@@ -157,7 +157,7 @@ export default function SharedWithMe() {
         try {
             const res = await api.get(`/storage/download-url/${file.file_id}`);
             const previewUrl = res.data.data.downloadUrl;
-            
+
             const response = await fetch(previewUrl);
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
@@ -210,9 +210,9 @@ export default function SharedWithMe() {
                         Sharing Management
                     </Typography>
                     <Tooltip title="Refresh">
-                        <IconButton 
-                            size="small" 
-                            onClick={handleRefresh} 
+                        <IconButton
+                            size="small"
+                            onClick={handleRefresh}
                             disabled={isRefetching}
                             sx={{ color: 'text.secondary' }}
                         >
@@ -244,13 +244,13 @@ export default function SharedWithMe() {
                     {/* TAB 0: SHARED WITH ME (RECEIVED) */}
                     {tab === 0 && (
                         receivedShares.length === 0 ? (
-                            <Box sx={{ 
-                                flex: 1, 
+                            <Box sx={{
+                                flex: 1,
                                 border: '2px dashed #E0E0E0',
                                 bgcolor: 'background.paper',
-                                display: 'flex', 
+                                display: 'flex',
                                 flexDirection: 'column',
-                                alignItems: 'center', 
+                                alignItems: 'center',
                                 justifyContent: 'center',
                                 gap: 2,
                                 borderRadius: 2
@@ -283,11 +283,11 @@ export default function SharedWithMe() {
                                                         {itemName}
                                                     </Typography>
                                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
-                                                        <Chip 
-                                                            avatar={<Avatar>{share.owner_name?.charAt(0)?.toUpperCase()}</Avatar>} 
-                                                            label={`Shared by ${share.owner_name}`} 
-                                                            size="small" 
-                                                            variant="outlined" 
+                                                        <Chip
+                                                            avatar={<Avatar>{share.owner_name?.charAt(0)?.toUpperCase()}</Avatar>}
+                                                            label={`Shared by ${share.owner_name}`}
+                                                            size="small"
+                                                            variant="outlined"
                                                         />
                                                         {isFile && (
                                                             <Typography variant="caption" color="text.secondary">
@@ -304,8 +304,8 @@ export default function SharedWithMe() {
                                                 <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 1 }}>
                                                     {isFile && (
                                                         <>
-                                                            <Button 
-                                                                variant="outlined" 
+                                                            <Button
+                                                                variant="outlined"
                                                                 size="small"
                                                                 startIcon={<PreviewIcon />}
                                                                 onClick={() => setPreviewFile({
@@ -317,8 +317,8 @@ export default function SharedWithMe() {
                                                             >
                                                                 Preview
                                                             </Button>
-                                                            <Button 
-                                                                variant="contained" 
+                                                            <Button
+                                                                variant="contained"
                                                                 size="small"
                                                                 startIcon={<DownloadIcon />}
                                                                 onClick={() => handleDownload(share)}
@@ -328,8 +328,8 @@ export default function SharedWithMe() {
                                                         </>
                                                     )}
 
-                                                    <Button 
-                                                        variant="outlined" 
+                                                    <Button
+                                                        variant="outlined"
                                                         size="small"
                                                         color="primary"
                                                         startIcon={copyingId === share.id ? <CircularProgress size={16} /> : <CopyIcon />}
@@ -339,8 +339,8 @@ export default function SharedWithMe() {
                                                         Copy to My Drive
                                                     </Button>
 
-                                                    <Button 
-                                                        variant="outlined" 
+                                                    <Button
+                                                        variant="outlined"
                                                         size="small"
                                                         color="error"
                                                         startIcon={<DeleteIcon />}
@@ -352,7 +352,7 @@ export default function SharedWithMe() {
 
                                                 {/* Always Available / Mobile 3-Dot Menu */}
                                                 <Box sx={{ display: { xs: 'block', md: 'none' } }}>
-                                                    <SharedCardActionsMenu 
+                                                    <SharedCardActionsMenu
                                                         isFile={isFile}
                                                         onPreview={isFile ? () => setPreviewFile({
                                                             id: share.file_id,
@@ -377,13 +377,13 @@ export default function SharedWithMe() {
                     {/* TAB 1: SHARED BY ME (SENT) */}
                     {tab === 1 && (
                         sentShares.length === 0 ? (
-                            <Box sx={{ 
-                                flex: 1, 
+                            <Box sx={{
+                                flex: 1,
                                 border: '2px dashed #E0E0E0',
                                 bgcolor: 'background.paper',
-                                display: 'flex', 
+                                display: 'flex',
                                 flexDirection: 'column',
-                                alignItems: 'center', 
+                                alignItems: 'center',
                                 justifyContent: 'center',
                                 gap: 2,
                                 borderRadius: 2
@@ -418,19 +418,19 @@ export default function SharedWithMe() {
                                                     </Typography>
                                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5, flexWrap: 'wrap' }}>
                                                         {share.recipient_email ? (
-                                                            <Chip 
-                                                                avatar={<Avatar>{share.recipient_name?.charAt(0)?.toUpperCase() || 'U'}</Avatar>} 
-                                                                label={`Shared with ${share.recipient_name || share.recipient_email}`} 
-                                                                size="small" 
+                                                            <Chip
+                                                                avatar={<Avatar>{share.recipient_name?.charAt(0)?.toUpperCase() || 'U'}</Avatar>}
+                                                                label={`Shared with ${share.recipient_name || share.recipient_email}`}
+                                                                size="small"
                                                                 color="primary"
-                                                                variant="outlined" 
+                                                                variant="outlined"
                                                             />
                                                         ) : (
                                                             <Chip label="Public Share Link" size="small" variant="outlined" />
                                                         )}
 
                                                         {share.expires_at && (
-                                                            <Chip 
+                                                            <Chip
                                                                 icon={<TimeIcon fontSize="small" />}
                                                                 label={isExpired ? "Expired" : `Expires ${new Date(share.expires_at).toLocaleDateString()}`}
                                                                 size="small"
@@ -447,8 +447,8 @@ export default function SharedWithMe() {
 
                                                 {/* Desktop Action Buttons */}
                                                 <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 1 }}>
-                                                    <Button 
-                                                        variant="outlined" 
+                                                    <Button
+                                                        variant="outlined"
                                                         size="small"
                                                         color={copiedShareId === share.id ? "success" : "primary"}
                                                         startIcon={<CopyIcon />}
@@ -457,8 +457,8 @@ export default function SharedWithMe() {
                                                         {copiedShareId === share.id ? 'Copied!' : 'Copy Link'}
                                                     </Button>
 
-                                                    <Button 
-                                                        variant="outlined" 
+                                                    <Button
+                                                        variant="outlined"
                                                         size="small"
                                                         color="info"
                                                         startIcon={<TimeIcon />}
@@ -467,20 +467,20 @@ export default function SharedWithMe() {
                                                         Set Expiration
                                                     </Button>
 
-                                                    <Button 
-                                                        variant="outlined" 
+                                                    <Button
+                                                        variant="outlined"
                                                         size="small"
                                                         color="error"
                                                         startIcon={<DeleteIcon />}
                                                         onClick={() => revokeSentShareMutation.mutate(share.id)}
                                                     >
-                                                        Revoke Access
+                                                        Delete Access
                                                     </Button>
                                                 </Box>
 
                                                 {/* Mobile 3-Dot Menu */}
                                                 <Box sx={{ display: { xs: 'block', md: 'none' } }}>
-                                                    <SharedCardActionsMenu 
+                                                    <SharedCardActionsMenu
                                                         isFile={false}
                                                         onCopyLink={() => handleCopyShareLink(share)}
                                                         onEditExpiration={() => setEditingShare(share)}
