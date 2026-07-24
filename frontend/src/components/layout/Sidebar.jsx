@@ -21,7 +21,9 @@ import {
     Cloud as CloudIcon,
     Chat as ChatIcon,
     ChevronLeft as ChevronLeftIcon,
-    ChevronRight as ChevronRightIcon
+    ChevronRight as ChevronRightIcon,
+    FactCheck as ApprovalIcon,
+    Business as OrgIcon
 } from '@mui/icons-material';
 
 const EXPANDED_WIDTH = 260;
@@ -60,6 +62,8 @@ export default function Sidebar() {
     const navItems = [
         { name: 'My Drive', path: '/drive', icon: <FolderIcon /> },
         { name: 'Shared with me', path: '/shared', icon: <UsersIcon /> },
+        { name: 'Approvals', path: '/approvals', icon: <ApprovalIcon /> },
+        { name: 'Organization', path: '/organization', icon: <OrgIcon /> },
         { name: 'Trash', path: '/trash', icon: <TrashIcon /> },
         { name: 'Chat', path: '/chat', icon: <ChatIcon /> },
     ];

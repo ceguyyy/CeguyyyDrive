@@ -7,6 +7,7 @@ import ContextMenu from '../../components/ui/ContextMenu';
 import RenameModal from '../../components/modals/RenameModal';
 import FilePreviewModal from '../../components/modals/FilePreviewModal';
 import ShareModal from '../../components/modals/ShareModal';
+import SubmitForApprovalModal from '../../components/modals/SubmitForApprovalModal';
 import { useItemActions } from '../../hooks/useItemActions';
 
 function formatBytes(bytes) {
@@ -21,6 +22,7 @@ export default function FileCard({ file, selected = false, onSelect = () => {}, 
     const [isRenameOpen, setIsRenameOpen] = useState(false);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
     const [isShareOpen, setIsShareOpen] = useState(false);
+    const [isApprovalOpen, setIsApprovalOpen] = useState(false);
     const { renameFile, deleteFile } = useItemActions(file.folder_id);
 
     const displayName = file.original_name || file.name;
@@ -119,6 +121,7 @@ export default function FileCard({ file, selected = false, onSelect = () => {}, 
                         onRename={() => setIsRenameOpen(true)}
                         onDelete={() => deleteFile.mutate(file.id)}
                         onShare={() => setIsShareOpen(true)}
+                        onApproval={() => setIsApprovalOpen(true)}
                         onCopy={() => onCopyItem?.('file', file.id)}
                         onCut={() => onCutItem?.('file', file.id)}
                     />
@@ -144,6 +147,13 @@ export default function FileCard({ file, selected = false, onSelect = () => {}, 
                 itemType="file"
                 itemId={file.id}
                 itemName={displayName}
+            />
+
+            <SubmitForApprovalModal
+                isOpen={isApprovalOpen}
+                onClose={() => setIsApprovalOpen(false)}
+                isFile={true}
+                item={file}
             />
         </>
     );

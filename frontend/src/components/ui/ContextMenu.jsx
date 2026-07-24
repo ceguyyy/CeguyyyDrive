@@ -75,6 +75,13 @@ export default function ContextMenu({ onRename, onDelete, onShare, onCopy, onCut
                         <ListItemText>Share</ListItemText>
                     </MenuItem>
                 )}
+
+                {onApproval && (
+                    <MenuItem onClick={(e) => { handleClose(e); onApproval(); }}>
+                        <ListItemIcon><ShareIcon fontSize="small" color="primary" /></ListItemIcon>
+                        <ListItemText>Submit for Approval</ListItemText>
+                    </MenuItem>
+                )}
                 
                 <MenuItem onClick={handleDeleteClick} sx={{ color: 'error.main' }}>
                     <ListItemIcon><DeleteIcon fontSize="small" color="error" /></ListItemIcon>
