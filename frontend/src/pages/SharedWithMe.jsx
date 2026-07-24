@@ -15,7 +15,8 @@ import {
     Delete as DeleteIcon,
     Send as SendIcon,
     MoreVert as MoreVertIcon,
-    Refresh as RefreshIcon
+    Refresh as RefreshIcon,
+    AccessTime as TimeIcon
 } from '@mui/icons-material';
 import api from '../services/api';
 import FilePreviewModal from '../components/modals/FilePreviewModal';
@@ -28,7 +29,7 @@ function formatBytes(bytes) {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
-function SharedCardActionsMenu({ onPreview, onDownload, onCopyToDrive, onDelete, deleteText = 'Remove', isFile = false }) {
+function SharedCardActionsMenu({ onPreview, onDownload, onCopyToDrive, onCopyLink, onDelete, deleteText = 'Remove', isFile = false }) {
     const [anchorEl, setAnchorEl] = useState(null);
     const open = Boolean(anchorEl);
 
@@ -65,6 +66,12 @@ function SharedCardActionsMenu({ onPreview, onDownload, onCopyToDrive, onDelete,
                         <ListItemText>Copy to My Drive</ListItemText>
                     </MenuItem>
                 )}
+                {onCopyLink && (
+                    <MenuItem onClick={() => { handleClose(); onCopyLink(); }}>
+                        <ListItemIcon><CopyIcon fontSize="small" /></ListItemIcon>
+                        <ListItemText>Copy Link</ListItemText>
+                    </MenuItem>
+                )}
                 {onDelete && (
                     <MenuItem onClick={() => { handleClose(); onDelete(); }} sx={{ color: 'error.main' }}>
                         <ListItemIcon><DeleteIcon fontSize="small" color="error" /></ListItemIcon>
@@ -80,6 +87,7 @@ export default function SharedWithMe() {
     const [tab, setTab] = useState(0); // 0: Shared with me, 1: Shared by me
     const [previewFile, setPreviewFile] = useState(null);
     const [copyingId, setCopyingId] = useState(null);
+    const [copiedShareId, setCopiedShareId] = useState(null);
     const queryClient = useQueryClient();
 
     // Query 1: Shared with me (Received)
@@ -164,6 +172,13 @@ export default function SharedWithMe() {
         copyToDriveMutation.mutate({ isFile, id: targetId }, {
             onSettled: () => setCopyingId(null)
         });
+    };
+
+    const handleCopyShareLink = (share) => {
+        const link = `${window.location.origin}/s/${share.token}`;
+        navigator.clipboard.writeText(link);
+        setCopiedShareId(share.id);
+        setTimeout(() => setCopiedShareId(null), 3000);
     };
 
     const isLoading = tab === 0 ? isReceivedLoading : isSentLoading;
@@ -368,7 +383,7 @@ export default function SharedWithMe() {
                                     You haven't shared any items yet
                                 </Typography>
                                 <Typography variant="body2" color="text.secondary">
-                                    When you share a file or folder by email, it will be listed here.
+                                    When you share a file or folder, it will be listed here.
                                 </Typography>
                             </Box>
                         ) : (
@@ -376,6 +391,7 @@ export default function SharedWithMe() {
                                 {sentShares.map(share => {
                                     const isFile = !!share.file_id;
                                     const itemName = isFile ? share.file_name : share.folder_name;
+                                    const isExpired = share.expires_at && new Date() > new Date(share.expires_at);
 
                                     return (
                                         <Card key={share.id} variant="outlined" sx={{ flexShrink: 0 }}>
@@ -402,14 +418,37 @@ export default function SharedWithMe() {
                                                         ) : (
                                                             <Chip label="Public Share Link" size="small" variant="outlined" />
                                                         )}
+
+                                                        {share.expires_at && (
+                                                            <Chip 
+                                                                icon={<TimeIcon fontSize="small" />}
+                                                                label={isExpired ? "Expired" : `Expires ${new Date(share.expires_at).toLocaleDateString()}`}
+                                                                size="small"
+                                                                color={isExpired ? "error" : "warning"}
+                                                                variant="outlined"
+                                                            />
+                                                        )}
+
                                                         <Typography variant="caption" color="text.secondary">
                                                             • Shared on {new Date(share.created_at).toLocaleDateString()}
                                                         </Typography>
                                                     </Box>
                                                 </Box>
 
-                                                {/* Desktop Button */}
-                                                <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+                                                {/* Desktop Action Buttons */}
+                                                <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 1 }}>
+                                                    {share.token && (
+                                                        <Button 
+                                                            variant="outlined" 
+                                                            size="small"
+                                                            color={copiedShareId === share.id ? "success" : "primary"}
+                                                            startIcon={<CopyIcon />}
+                                                            onClick={() => handleCopyShareLink(share)}
+                                                        >
+                                                            {copiedShareId === share.id ? 'Copied!' : 'Copy Link'}
+                                                        </Button>
+                                                    )}
+
                                                     <Button 
                                                         variant="outlined" 
                                                         size="small"
@@ -425,6 +464,7 @@ export default function SharedWithMe() {
                                                 <Box sx={{ display: { xs: 'block', md: 'none' } }}>
                                                     <SharedCardActionsMenu 
                                                         isFile={false}
+                                                        onCopyLink={share.token ? () => handleCopyShareLink(share) : null}
                                                         onDelete={() => revokeSentShareMutation.mutate(share.id)}
                                                         deleteText="Revoke Access"
                                                     />
