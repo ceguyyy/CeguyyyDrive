@@ -58,3 +58,4 @@ New Text Document.txt
 # Git worktrees (isolated dev workspaces)
 # ============================================
 .worktrees/
+graphify-out/
