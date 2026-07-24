@@ -11,7 +11,21 @@ class AuthService {
         return jwt.sign({ id, role: role_name }, secret, { expiresIn });
     }
 
-    async register(email, password, fullName, roleName = 'user') {
+    async register(email, password, fullName, roleName = 'user', accessKey = null) {
+        const DEFAULT_BETA_KEYS = ['BETA2026', 'CEGUYYY-BETA', 'OPENVIP', 'BETA100', 'VIP2026'];
+        const envKeys = process.env.BETA_ACCESS_KEYS 
+            ? process.env.BETA_ACCESS_KEYS.split(',').map(k => k.trim().toUpperCase())
+            : DEFAULT_BETA_KEYS;
+
+        if (!accessKey || typeof accessKey !== 'string') {
+            throw new AppError('Open Beta Access Key is required for registration', 400);
+        }
+
+        const formattedKey = accessKey.trim().toUpperCase();
+        if (!envKeys.includes(formattedKey)) {
+            throw new AppError('Invalid Open Beta Access Key. Please provide a valid invitation code to join.', 400);
+        }
+
         const existingUser = await userRepository.findByEmail(email);
         if (existingUser) {
             throw new AppError('Email is already in use', 400);
@@ -23,7 +37,7 @@ class AuthService {
         }
 
         const passwordHash = await bcrypt.hash(password, 12);
-        const newUser = await userRepository.create(email, passwordHash, fullName, role.id);
+        const newUser = await userRepository.create(email, passwordHash, fullName, role.id, formattedKey);
         
         newUser.role_name = role.name;
 

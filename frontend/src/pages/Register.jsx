@@ -12,7 +12,8 @@ import CloudLogo from '../components/ui/CloudLogo';
 const schema = z.object({
     fullName: z.string().min(2, "Full Name must be at least 2 characters"),
     email: z.string().email("Invalid email address"),
-    password: z.string().min(8, "Password must be at least 8 characters")
+    password: z.string().min(8, "Password must be at least 8 characters"),
+    accessKey: z.string().min(1, "Open Beta Access Key is required")
 });
 
 export default function Register() {
@@ -69,8 +70,9 @@ export default function Register() {
             setServerError('');
             const response = await api.post('/auth/register', payload);
             
-            const { accessToken, user } = response.data.data;
-            setAuth(accessToken, user);
+            const { accessToken, token, user } = response.data.data;
+            const validToken = accessToken || token;
+            setAuth(validToken, user);
             navigate('/drive');
         } catch (err) {
             setServerError(err.response?.data?.message || 'Registration failed');
@@ -97,10 +99,22 @@ export default function Register() {
                         margin="normal"
                         required
                         fullWidth
+                        id="accessKey"
+                        label="Open Beta Access Key"
+                        placeholder="e.g. BETA2026"
+                        autoComplete="off"
+                        autoFocus
+                        {...register('accessKey')}
+                        error={!!errors.accessKey}
+                        helperText={errors.accessKey?.message || "Required for Open Beta access"}
+                    />
+                    <TextField
+                        margin="normal"
+                        required
+                        fullWidth
                         id="fullName"
                         label="Full Name"
                         autoComplete="name"
-                        autoFocus
                         {...register('fullName')}
                         error={!!errors.fullName}
                         helperText={errors.fullName?.message}

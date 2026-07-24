@@ -7,31 +7,25 @@ const registerSchema = z.object({
     email: z.string().email(),
     password: z.string().min(8),
     fullName: z.string().min(2),
+    accessKey: z.string().min(1, "Access key is required"),
     role: z.enum(['owner', 'user']).optional(),
-    ticket: z.string(),
-    randstr: z.string()
+    ticket: z.string().optional(),
+    randstr: z.string().optional()
 });
 
 const loginSchema = z.object({
     email: z.string().email(),
     password: z.string(),
-    ticket: z.string(),
-    randstr: z.string()
+    ticket: z.string().optional(),
+    randstr: z.string().optional()
 });
 
 exports.register = async (req, res, next) => {
     try {
         const validatedData = registerSchema.parse(req.body);
-        const { email, password, fullName, role, ticket, randstr } = validatedData;
+        const { email, password, fullName, accessKey, role } = validatedData;
 
-        // Verify Captcha (Disabled for local testing)
-        // const userIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-        // const isValidCaptcha = await captchaService.verifyCaptcha(ticket, randstr, userIp);
-        // if (isValidCaptcha !== true) {
-        //     return res.status(400).json({ status: 'error', message: typeof isValidCaptcha === 'string' ? isValidCaptcha : 'Captcha verification failed' });
-        // }
-
-        const result = await authService.register(email, password, fullName, role);
+        const result = await authService.register(email, password, fullName, role || 'user', accessKey);
 
         res.status(201).json({
             status: 'success',

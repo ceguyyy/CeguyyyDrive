@@ -1,11 +1,11 @@
 const db = require('../config/db');
 
 class UserRepository {
-    async create(email, passwordHash, fullName, roleId) {
+    async create(email, passwordHash, fullName, roleId, accessKey = null) {
         const result = await db.query(
-            `INSERT INTO users (email, password_hash, full_name, role_id) 
-             VALUES ($1, $2, $3, $4) RETURNING id, email, full_name, role_id, created_at`,
-            [email, passwordHash, fullName, roleId]
+            `INSERT INTO users (email, password_hash, full_name, role_id, access_key) 
+             VALUES ($1, $2, $3, $4, $5) RETURNING id, email, full_name, role_id, access_key, created_at`,
+            [email, passwordHash, fullName, roleId, accessKey]
         );
         return result.rows[0];
     }
