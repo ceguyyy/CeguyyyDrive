@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { 
-    Dialog, DialogTitle, DialogContent, DialogActions, 
+    Dialog, DialogTitle, DialogContent, 
     IconButton, Typography, Box, CircularProgress, Button, Alert, Tooltip
 } from '@mui/material';
-import { Close as CloseIcon, Download as DownloadIcon } from '@mui/icons-material';
+import { Close as CloseIcon, Download as DownloadIcon, OpenInNew as OpenInNewIcon } from '@mui/icons-material';
 import api from '../../services/api';
 import PromptModal from './PromptModal';
 import DocViewer, { DocViewerRenderers } from "@cyntler/react-doc-viewer";
@@ -20,7 +20,10 @@ export default function FilePreviewModal({ isOpen, onClose, file }) {
         if (isOpen && file) {
             setIsLoading(true);
             setError(null);
-            api.get(`/storage/download-url/${file.id}`)
+            
+            // Allow file.file_id or file.id for shared files
+            const targetId = file.id || file.file_id;
+            api.get(`/storage/download-url/${targetId}`)
                 .then(res => {
                     if (isMounted) setPreviewUrl(res.data.data.downloadUrl);
                 })
@@ -34,13 +37,14 @@ export default function FilePreviewModal({ isOpen, onClose, file }) {
         return () => { isMounted = false; setPreviewUrl(null); };
     }, [isOpen, file]);
 
-    if (!isOpen) return null;
+    if (!isOpen || !file) return null;
 
-    const mime = file?.mime_type || '';
+    const mime = file.mime_type || '';
+    const fileName = (file.original_name || file.name || '').toLowerCase();
     const isImage = mime.startsWith('image/');
     const isVideo = mime.startsWith('video/');
     const isAudio = mime.startsWith('audio/');
-    const isPdf = mime === 'application/pdf';
+    const isPdf = mime === 'application/pdf' || mime.includes('pdf') || fileName.endsWith('.pdf');
     
     // Supported formats for DocViewer
     const isDocViewerSupported = [
@@ -63,7 +67,7 @@ export default function FilePreviewModal({ isOpen, onClose, file }) {
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
         } catch (err) {
-            alert("Failed to download file. It might be due to CORS restrictions or network issues.");
+            alert("Failed to download file. Opening in new tab instead.");
             window.open(previewUrl, '_blank');
         }
     };
@@ -80,6 +84,20 @@ export default function FilePreviewModal({ isOpen, onClose, file }) {
                     {file.original_name || file.name}
                 </Typography>
                 <Box sx={{ display: 'flex', gap: 1 }}>
+                    {previewUrl && (
+                        <Tooltip title="Open in new tab">
+                            <IconButton
+                                aria-label="open in new tab"
+                                component="a"
+                                href={previewUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                sx={{ color: 'grey.700', '&:hover': { color: 'black' } }}
+                            >
+                                <OpenInNewIcon />
+                            </IconButton>
+                        </Tooltip>
+                    )}
                     <Tooltip title="Download">
                         <span>
                             <IconButton
@@ -105,7 +123,7 @@ export default function FilePreviewModal({ isOpen, onClose, file }) {
             </DialogTitle>
             <DialogContent sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: isDocViewerSupported || isPdf ? 0 : 4, height: '100%', bgcolor: 'common.white', '& *': { minHeight: 0 } }}>
                 <Box sx={{ width: '100%', height: '100%', display: 'flex', flex: 1, justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
-                    {isLoading && <CircularProgress color="inherit" sx={{ color: 'common.white' }} />}
+                    {isLoading && <CircularProgress color="primary" />}
                     {error && <Alert severity="error">{error}</Alert>}
                     
                     {previewUrl && isImage && (
@@ -121,7 +139,28 @@ export default function FilePreviewModal({ isOpen, onClose, file }) {
                     )}
                     
                     {previewUrl && isPdf && (
-                        <Box component="iframe" src={`${previewUrl}#toolbar=0`} sx={{ width: '100%', height: '100%', border: 'none', bgcolor: 'background.paper' }} title={file.name} />
+                        <Box sx={{ width: '100%', height: '100%', bgcolor: '#525659' }}>
+                            <object
+                                data={previewUrl}
+                                type="application/pdf"
+                                width="100%"
+                                height="100%"
+                                style={{ border: 'none' }}
+                            >
+                                <iframe 
+                                    src={previewUrl} 
+                                    style={{ width: '100%', height: '100%', border: 'none' }} 
+                                    title={file.name}
+                                >
+                                    <p sx={{ color: 'white', p: 2 }}>
+                                        Your browser does not support PDF inline viewing.{' '}
+                                        <a href={previewUrl} target="_blank" rel="noreferrer" style={{ color: '#90caf9' }}>
+                                            Click here to open PDF directly
+                                        </a>.
+                                    </p>
+                                </iframe>
+                            </object>
+                        </Box>
                     )}
 
                     {previewUrl && isDocViewerSupported && !isImage && !isPdf && (
@@ -149,7 +188,7 @@ export default function FilePreviewModal({ isOpen, onClose, file }) {
                     )}
                     
                     {previewUrl && !isImage && !isPdf && !isVideo && !isAudio && !isDocViewerSupported && (
-                        <Box sx={{ textAlign: 'center', color: 'common.white' }}>
+                        <Box sx={{ textAlign: 'center', color: 'text.primary' }}>
                             <Typography variant="h6" gutterBottom>
                                 Preview not available for this file type
                             </Typography>
