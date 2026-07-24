@@ -2,15 +2,14 @@ import React, { useState } from 'react';
 import { 
     Dialog, DialogTitle, DialogContent, DialogActions, 
     Button, TextField, Typography, Box, Tabs, Tab, 
-    InputAdornment, IconButton, Alert, CircularProgress,
-    List, ListItem, ListItemText, ListItemSecondaryAction, Tooltip
+    CircularProgress, Alert, Select, MenuItem, FormControl, InputLabel
 } from '@mui/material';
 import { 
     Send as SendIcon, 
     ContentCopy as CopyIcon, 
     PersonAdd as PersonAddIcon, 
     Link as LinkIcon,
-    Delete as DeleteIcon
+    AccessTime as TimeIcon
 } from '@mui/icons-material';
 import api from '../../services/api';
 
@@ -24,6 +23,7 @@ export default function ShareModal({ isOpen, onClose, itemType, itemId, itemName
     const [emailError, setEmailError] = useState('');
 
     // Public link state
+    const [expirationOption, setExpirationOption] = useState('never'); // never, 1h, 1d, 7d, 30d
     const [linkLoading, setLinkLoading] = useState(false);
     const [publicLink, setPublicLink] = useState('');
     const [linkCopied, setLinkCopied] = useState(false);
@@ -52,13 +52,25 @@ export default function ShareModal({ isOpen, onClose, itemType, itemId, itemName
         }
     };
 
+    const getExpirationDate = (option) => {
+        if (option === 'never') return null;
+        const now = new Date();
+        if (option === '1h') now.setHours(now.getHours() + 1);
+        else if (option === '1d') now.setDate(now.getDate() + 1);
+        else if (option === '7d') now.setDate(now.getDate() + 7);
+        else if (option === '30d') now.setDate(now.getDate() + 30);
+        return now.toISOString();
+    };
+
     const handleGeneratePublicLink = async () => {
         setLinkLoading(true);
         setLinkError('');
         setPublicLink('');
 
         try {
+            const expiresAt = getExpirationDate(expirationOption);
             const payload = {
+                expiresAt,
                 ...(itemType === 'file' ? { fileId: itemId } : { folderId: itemId })
             };
             const res = await api.post('/shares', payload);
@@ -87,9 +99,10 @@ export default function ShareModal({ isOpen, onClose, itemType, itemId, itemName
             <DialogContent dividers>
                 <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>
                     <Tab icon={<PersonAddIcon fontSize="small" />} iconPosition="start" label="Share by Email" />
-                    <Tab icon={<LinkIcon fontSize="small" />} iconPosition="start" label="Public Link" />
+                    <Tab icon={<LinkIcon fontSize="small" />} iconPosition="start" label="Public Link Access" />
                 </Tabs>
 
+                {/* TAB 0: SHARE BY EMAIL */}
                 {tab === 0 && (
                     <Box component="form" onSubmit={handleShareByEmail} sx={{ mt: 1 }}>
                         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
@@ -123,37 +136,69 @@ export default function ShareModal({ isOpen, onClose, itemType, itemId, itemName
                     </Box>
                 )}
 
+                {/* TAB 1: PUBLIC LINK ACCESS */}
                 {tab === 1 && (
                     <Box sx={{ mt: 1 }}>
                         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                            Generate a shareable public link. Anyone with this link can view or download the item.
+                            Generate a shareable public link. Anyone with this link can view, preview, or copy the item to their Drive.
                         </Typography>
 
                         {linkError && <Alert severity="error" sx={{ mb: 2 }}>{linkError}</Alert>}
 
-                        {publicLink ? (
-                            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                                <TextField
-                                    fullWidth
-                                    size="small"
-                                    value={publicLink}
-                                    InputProps={{ readOnly: true }}
-                                />
-                                <Button 
-                                    variant="contained" 
-                                    startIcon={<CopyIcon />} 
-                                    onClick={handleCopyLink}
-                                    color={linkCopied ? 'success' : 'primary'}
+                        <Box sx={{ mb: 3 }}>
+                            <FormControl fullWidth size="small">
+                                <InputLabel id="expiration-label">Link Expiration Time</InputLabel>
+                                <Select
+                                    labelId="expiration-label"
+                                    value={expirationOption}
+                                    label="Link Expiration Time"
+                                    onChange={(e) => {
+                                        setExpirationOption(e.target.value);
+                                        setPublicLink(''); // reset link when duration changes
+                                    }}
+                                    startAdornment={<TimeIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />}
                                 >
-                                    {linkCopied ? 'Copied!' : 'Copy'}
-                                </Button>
+                                    <MenuItem value="never">No Expiration (Permanent)</MenuItem>
+                                    <MenuItem value="1h">1 Hour</MenuItem>
+                                    <MenuItem value="1d">1 Day (24 Hours)</MenuItem>
+                                    <MenuItem value="7d">7 Days</MenuItem>
+                                    <MenuItem value="30d">30 Days</MenuItem>
+                                </Select>
+                            </FormControl>
+                        </Box>
+
+                        {publicLink ? (
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                                <Typography variant="caption" color="text.secondary" fontWeight="600">
+                                    Your Public Link is ready:
+                                </Typography>
+                                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                                    <TextField
+                                        fullWidth
+                                        size="small"
+                                        value={publicLink}
+                                        InputProps={{ readOnly: true }}
+                                    />
+                                    <Button 
+                                        variant="contained" 
+                                        startIcon={<CopyIcon />} 
+                                        onClick={handleCopyLink}
+                                        color={linkCopied ? 'success' : 'primary'}
+                                        sx={{ minWidth: 100 }}
+                                    >
+                                        {linkCopied ? 'Copied!' : 'Copy'}
+                                    </Button>
+                                </Box>
+                                <Typography variant="caption" color="success.main" fontWeight="500">
+                                    ✓ Anyone with this link can access the item. Logged-in users can also save it to their Drive.
+                                </Typography>
                             </Box>
                         ) : (
                             <Button 
-                                variant="outlined" 
+                                variant="contained" 
                                 onClick={handleGeneratePublicLink}
                                 disabled={linkLoading}
-                                startIcon={linkLoading ? <CircularProgress size={16} /> : <LinkIcon />}
+                                startIcon={linkLoading ? <CircularProgress size={16} color="inherit" /> : <LinkIcon />}
                             >
                                 {linkLoading ? 'Generating Link...' : 'Create Public Share Link'}
                             </Button>
