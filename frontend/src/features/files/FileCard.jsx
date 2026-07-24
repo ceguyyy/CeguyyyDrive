@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { InsertDriveFile as DocumentIcon, Image as ImageIcon } from '@mui/icons-material';
-import { Card, CardActionArea, CardContent, Typography, Box, Checkbox, Skeleton } from '@mui/material';
+import { InsertDriveFile as DocumentIcon, Image as ImageIcon, CheckCircle as ApprovedIcon, HourglassEmpty as PendingIcon, Cancel as RejectedIcon } from '@mui/icons-material';
+import { Card, CardActionArea, CardContent, Typography, Box, Checkbox, Skeleton, Chip } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../services/api';
 import ContextMenu from '../../components/ui/ContextMenu';
@@ -8,7 +8,14 @@ import RenameModal from '../../components/modals/RenameModal';
 import FilePreviewModal from '../../components/modals/FilePreviewModal';
 import ShareModal from '../../components/modals/ShareModal';
 import SubmitForApprovalModal from '../../components/modals/SubmitForApprovalModal';
+import ApprovalMetadataModal from '../../components/approvals/ApprovalMetadataModal';
 import { useItemActions } from '../../hooks/useItemActions';
+
+const APPROVAL_BADGE = {
+    pending: { label: 'Pending', color: 'warning', icon: PendingIcon },
+    approved: { label: 'Approved', color: 'success', icon: ApprovedIcon },
+    rejected: { label: 'Rejected', color: 'error', icon: RejectedIcon },
+};
 
 function formatBytes(bytes) {
     if (bytes === 0) return '0 B';
@@ -23,10 +30,12 @@ export default function FileCard({ file, selected = false, onSelect = () => {}, 
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
     const [isShareOpen, setIsShareOpen] = useState(false);
     const [isApprovalOpen, setIsApprovalOpen] = useState(false);
+    const [isApprovalMetaOpen, setIsApprovalMetaOpen] = useState(false);
     const { renameFile, deleteFile } = useItemActions(file.folder_id);
 
     const displayName = file.original_name || file.name;
     const isImage = file.mime_type?.startsWith('image/');
+    const approvalBadge = file.approval_status ? APPROVAL_BADGE[file.approval_status] : null;
 
     const { data: thumbnailUrl, isLoading: isThumbnailLoading } = useQuery({
         queryKey: ['thumbnail', file.id],
@@ -106,6 +115,17 @@ export default function FileCard({ file, selected = false, onSelect = () => {}, 
                         ) : (
                             <DocumentIcon sx={{ fontSize: 64, color: 'text.secondary' }} />
                         )}
+
+                        {approvalBadge && (
+                            <Chip
+                                icon={<approvalBadge.icon sx={{ fontSize: '0.9rem' }} />}
+                                label={approvalBadge.label}
+                                size="small"
+                                color={approvalBadge.color}
+                                onClick={(e) => { e.stopPropagation(); setIsApprovalMetaOpen(true); }}
+                                sx={{ position: 'absolute', top: 6, right: 6, height: 22, fontSize: '0.65rem', '& .MuiChip-icon': { ml: 0.5 } }}
+                            />
+                        )}
                     </Box>
                 </CardActionArea>
                 <CardContent sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1.5, '&:last-child': { pb: 1.5 } }}>
@@ -117,11 +137,12 @@ export default function FileCard({ file, selected = false, onSelect = () => {}, 
                             {formatBytes(file.size)} {file.created_at ? `• ${new Date(file.created_at).toLocaleDateString()}` : ''}
                         </Typography>
                     </Box>
-                    <ContextMenu 
+                    <ContextMenu
                         onRename={() => setIsRenameOpen(true)}
                         onDelete={() => deleteFile.mutate(file.id)}
                         onShare={() => setIsShareOpen(true)}
                         onApproval={() => setIsApprovalOpen(true)}
+                        onViewApprovalStatus={approvalBadge ? () => setIsApprovalMetaOpen(true) : null}
                         onCopy={() => onCopyItem?.('file', file.id)}
                         onCut={() => onCutItem?.('file', file.id)}
                     />
@@ -155,6 +176,14 @@ export default function FileCard({ file, selected = false, onSelect = () => {}, 
                 isFile={true}
                 item={file}
             />
+
+            {file.approval_request_id && (
+                <ApprovalMetadataModal
+                    isOpen={isApprovalMetaOpen}
+                    onClose={() => setIsApprovalMetaOpen(false)}
+                    requestId={file.approval_request_id}
+                />
+            )}
         </>
     );
 }

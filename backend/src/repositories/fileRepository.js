@@ -46,17 +46,27 @@ class FileRepository {
     }
 
     async findByFolderAndUser(folderId, userId) {
-        let query = `SELECT * FROM files WHERE user_id = $1 AND is_deleted = false `;
+        let query = `
+            SELECT f.*, ar.id as approval_request_id, ar.title as approval_title, ar.status as approval_status
+            FROM files f
+            LEFT JOIN LATERAL (
+                SELECT id, title, status
+                FROM approval_requests
+                WHERE file_id = f.id
+                ORDER BY created_at DESC
+                LIMIT 1
+            ) ar ON true
+            WHERE f.user_id = $1 AND f.is_deleted = false `;
         const params = [userId];
 
         if (folderId) {
-            query += `AND folder_id = $2`;
+            query += `AND f.folder_id = $2`;
             params.push(folderId);
         } else {
-            query += `AND folder_id IS NULL`;
+            query += `AND f.folder_id IS NULL`;
         }
-        
-        query += ` ORDER BY original_name ASC`;
+
+        query += ` ORDER BY f.original_name ASC`;
 
         const result = await db.query(query, params);
         return result.rows;

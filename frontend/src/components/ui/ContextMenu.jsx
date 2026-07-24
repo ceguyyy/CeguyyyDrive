@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
 import { IconButton, Menu, MenuItem, ListItemIcon, ListItemText } from '@mui/material';
-import { 
-    MoreVert as MoreVertIcon, 
-    Edit as EditIcon, 
-    Delete as DeleteIcon, 
+import {
+    MoreVert as MoreVertIcon,
+    Edit as EditIcon,
+    Delete as DeleteIcon,
     Share as ShareIcon,
     ContentCopy as CopyIcon,
-    ContentCut as CutIcon
+    ContentCut as CutIcon,
+    FactCheck as ApprovalStatusIcon
 } from '@mui/icons-material';
 import ConfirmModal from '../modals/ConfirmModal';
 
-export default function ContextMenu({ onRename, onDelete, onShare, onCopy, onCut }) {
+export default function ContextMenu({ onRename, onDelete, onShare, onApproval, onViewApprovalStatus, onCopy, onCut }) {
     const [anchorEl, setAnchorEl] = useState(null);
     const [isConfirmOpen, setIsConfirmOpen] = useState(false);
     const open = Boolean(anchorEl);
@@ -80,6 +81,13 @@ export default function ContextMenu({ onRename, onDelete, onShare, onCopy, onCut
                     <MenuItem onClick={(e) => { handleClose(e); onApproval(); }}>
                         <ListItemIcon><ShareIcon fontSize="small" color="primary" /></ListItemIcon>
                         <ListItemText>Submit for Approval</ListItemText>
+                    </MenuItem>
+                )}
+
+                {onViewApprovalStatus && (
+                    <MenuItem onClick={(e) => { handleClose(e); onViewApprovalStatus(); }}>
+                        <ListItemIcon><ApprovalStatusIcon fontSize="small" color="primary" /></ListItemIcon>
+                        <ListItemText>View Approval Status</ListItemText>
                     </MenuItem>
                 )}
                 
