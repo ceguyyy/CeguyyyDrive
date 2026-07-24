@@ -17,11 +17,13 @@ import {
     MoreVert as MoreVertIcon,
     Refresh as RefreshIcon,
     AccessTime as TimeIcon,
-    EditCalendar as EditCalendarIcon
+    EditCalendar as EditCalendarIcon,
+    Lock as LockIcon
 } from '@mui/icons-material';
 import api from '../services/api';
 import FilePreviewModal from '../components/modals/FilePreviewModal';
 import EditExpirationModal from '../components/modals/EditExpirationModal';
+import EditPasswordModal from '../components/modals/EditPasswordModal';
 
 function formatBytes(bytes) {
     if (!bytes) return '0 B';
@@ -31,7 +33,7 @@ function formatBytes(bytes) {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
-function SharedCardActionsMenu({ onPreview, onDownload, onCopyToDrive, onCopyLink, onEditExpiration, onDelete, deleteText = 'Remove', isFile = false }) {
+function SharedCardActionsMenu({ onPreview, onDownload, onCopyToDrive, onCopyLink, onEditExpiration, onEditPassword, onDelete, deleteText = 'Remove', isFile = false }) {
     const [anchorEl, setAnchorEl] = useState(null);
     const open = Boolean(anchorEl);
 
@@ -74,6 +76,12 @@ function SharedCardActionsMenu({ onPreview, onDownload, onCopyToDrive, onCopyLin
                         <ListItemText>Copy Link</ListItemText>
                     </MenuItem>
                 )}
+                {onEditPassword && (
+                    <MenuItem onClick={() => { handleClose(); onEditPassword(); }}>
+                        <ListItemIcon><LockIcon fontSize="small" /></ListItemIcon>
+                        <ListItemText>Password Protection</ListItemText>
+                    </MenuItem>
+                )}
                 {onEditExpiration && (
                     <MenuItem onClick={() => { handleClose(); onEditExpiration(); }}>
                         <ListItemIcon><TimeIcon fontSize="small" /></ListItemIcon>
@@ -95,6 +103,7 @@ export default function SharedWithMe() {
     const [tab, setTab] = useState(0); // 0: Shared with me, 1: Shared by me
     const [previewFile, setPreviewFile] = useState(null);
     const [editingShare, setEditingShare] = useState(null);
+    const [editingPasswordShare, setEditingPasswordShare] = useState(null);
     const [copyingId, setCopyingId] = useState(null);
     const [copiedShareId, setCopiedShareId] = useState(null);
     const queryClient = useQueryClient();
@@ -429,6 +438,16 @@ export default function SharedWithMe() {
                                                             <Chip label="Public Share Link" size="small" variant="outlined" />
                                                         )}
 
+                                                        {share.password_hash && (
+                                                            <Chip
+                                                                icon={<LockIcon fontSize="small" />}
+                                                                label="Password Protected"
+                                                                size="small"
+                                                                color="warning"
+                                                                variant="outlined"
+                                                            />
+                                                        )}
+
                                                         {share.expires_at && (
                                                             <Chip
                                                                 icon={<TimeIcon fontSize="small" />}
@@ -460,6 +479,16 @@ export default function SharedWithMe() {
                                                     <Button
                                                         variant="outlined"
                                                         size="small"
+                                                        color="warning"
+                                                        startIcon={<LockIcon />}
+                                                        onClick={() => setEditingPasswordShare(share)}
+                                                    >
+                                                        Password
+                                                    </Button>
+
+                                                    <Button
+                                                        variant="outlined"
+                                                        size="small"
                                                         color="info"
                                                         startIcon={<TimeIcon />}
                                                         onClick={() => setEditingShare(share)}
@@ -483,6 +512,7 @@ export default function SharedWithMe() {
                                                     <SharedCardActionsMenu
                                                         isFile={false}
                                                         onCopyLink={() => handleCopyShareLink(share)}
+                                                        onEditPassword={() => setEditingPasswordShare(share)}
                                                         onEditExpiration={() => setEditingShare(share)}
                                                         onDelete={() => revokeSentShareMutation.mutate(share.id)}
                                                         deleteText="Revoke Access"
@@ -511,6 +541,15 @@ export default function SharedWithMe() {
                     isOpen={!!editingShare}
                     onClose={() => setEditingShare(null)}
                     share={editingShare}
+                    onSuccess={() => queryClient.invalidateQueries({ queryKey: ['shared-by-me'] })}
+                />
+            )}
+
+            {editingPasswordShare && (
+                <EditPasswordModal
+                    isOpen={!!editingPasswordShare}
+                    onClose={() => setEditingPasswordShare(null)}
+                    share={editingPasswordShare}
                     onSuccess={() => queryClient.invalidateQueries({ queryKey: ['shared-by-me'] })}
                 />
             )}

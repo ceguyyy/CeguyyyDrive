@@ -105,3 +105,28 @@ exports.deleteFile = async (req, res, next) => {
         next(err);
     }
 };
+
+exports.toggleStar = async (req, res, next) => {
+    try {
+        const result = await fileService.toggleStar(req.params.id, req.user.id);
+        res.status(200).json({
+            status: 'success',
+            data: result
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+exports.getStarredFiles = async (req, res, next) => {
+    try {
+        const files = await fileService.getStarredFiles(req.user.id);
+        res.status(200).json({
+            status: 'success',
+            results: files.length,
+            data: { files }
+        });
+    } catch (err) {
+        next(err);
+    }
+};

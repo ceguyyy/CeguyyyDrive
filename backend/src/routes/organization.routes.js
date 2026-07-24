@@ -1,10 +1,15 @@
 const express = require('express');
 const organizationController = require('../controllers/organizationController');
+const orgDriveRoutes = require('./orgDrive.routes');
+const approvalTemplateRoutes = require('./approvalTemplate.routes');
 const authMiddleware = require('../middlewares/authMiddleware');
 
 const router = express.Router();
 
 router.use(authMiddleware.protect);
+
+router.use('/:orgId/drive', orgDriveRoutes);
+router.use('/:orgId/approval-templates', approvalTemplateRoutes);
 
 router.post('/', organizationController.createOrganization);
 router.get('/', organizationController.getUserOrganizations);

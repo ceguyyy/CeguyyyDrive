@@ -33,10 +33,18 @@ class OrganizationRepository {
             );
             const mgrId = mgrRes.rows[0].id;
 
-            await client.query(
+            const staffRes = await client.query(
                 `INSERT INTO organization_roles (organization_id, name, parent_role_id, canvas_position_x, canvas_position_y, color) 
-                 VALUES ($1, 'Staff', $2, 250, 310, '#10B981')`,
+                 VALUES ($1, 'Staff', $2, 250, 310, '#10B981') RETURNING id`,
                 [org.id, mgrId]
+            );
+            const staffId = staffRes.rows[0].id;
+
+            // Provision Company Drive root folders for default roles
+            await client.query(
+                `INSERT INTO folders (name, organization_id, owner_role_id, user_id)
+                 VALUES ('Owner', $1, $2, NULL), ('Manager', $1, $3, NULL), ('Staff', $1, $4, NULL)`,
+                [org.id, ceoId, mgrId, staffId]
             );
 
             await client.query('COMMIT');
@@ -139,7 +147,26 @@ class OrganizationRepository {
                      RETURNING *`,
                     [r.id || null, orgId, r.name, r.parent_role_id || null, r.canvas_position_x || 250, r.canvas_position_y || 100, r.color || '#3B82F6', r.storage_limit || null]
                 );
-                inserted.push(res.rows[0]);
+                const role = res.rows[0];
+                inserted.push(role);
+
+                // Provision or update root folder for this role
+                const existingFolder = await client.query(
+                    `SELECT id FROM folders WHERE organization_id = $1 AND owner_role_id = $2`,
+                    [orgId, role.id]
+                );
+                if (existingFolder.rows.length > 0) {
+                    await client.query(
+                        `UPDATE folders SET name = $1 WHERE id = $2`,
+                        [role.name, existingFolder.rows[0].id]
+                    );
+                } else {
+                    await client.query(
+                        `INSERT INTO folders (name, organization_id, owner_role_id, user_id)
+                         VALUES ($1, $2, $3, NULL)`,
+                        [role.name, orgId, role.id]
+                    );
+                }
             }
             await client.query('COMMIT');
             return inserted;

@@ -52,9 +52,29 @@ export default function SubmitForApprovalModal({ isOpen, onClose, isFile, item }
         enabled: isOpen && !!selectedOrgId
     });
 
+    const { data: templatesData } = useQuery({
+        queryKey: ['approval-templates', selectedOrgId],
+        queryFn: async () => {
+            if (!selectedOrgId) return [];
+            const res = await api.get(`/organizations/${selectedOrgId}/approval-templates`);
+            return res.data.data.templates;
+        },
+        enabled: isOpen && !!selectedOrgId
+    });
+
     const orgs = orgsData || [];
     const roles = rolesData || [];
     const members = membersData || [];
+    const templates = templatesData || [];
+
+    const handleLoadTemplate = (templateId) => {
+        const tpl = templates.find(t => t.id === templateId);
+        if (!tpl || !tpl.steps) return;
+        setSteps(tpl.steps.map(s => ({
+            role_name: s.role_name,
+            approver_id: s.approver_id || ''
+        })));
+    };
 
     const submitMutation = useMutation({
         mutationFn: async (payload) => {
@@ -134,6 +154,23 @@ export default function SubmitForApprovalModal({ isOpen, onClose, isFile, item }
                         value={title} 
                         onChange={(e) => setTitle(e.target.value)} 
                     />
+
+                    {templates.length > 0 && (
+                        <FormControl fullWidth size="small">
+                            <InputLabel>Load Template (Optional)</InputLabel>
+                            <Select
+                                value=""
+                                label="Load Template (Optional)"
+                                onChange={(e) => handleLoadTemplate(e.target.value)}
+                            >
+                                {templates.map(t => (
+                                    <MenuItem key={t.id} value={t.id}>
+                                        {t.name} ({t.steps?.length || 0} steps)
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    )}
 
                     <Typography variant="subtitle2" fontWeight="bold" sx={{ mt: 1 }}>
                         Configure Multi-Stage Approval Sequence

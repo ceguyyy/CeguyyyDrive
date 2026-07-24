@@ -4,7 +4,7 @@ import {
     Box, Typography, Button, TextField, CircularProgress, Alert, Card,
     CardContent, Stack, Avatar, Chip, Tabs, Tab, Table, TableBody, TableCell,
     TableHead, TableRow, Dialog, DialogTitle, DialogContent, DialogActions,
-    Select, MenuItem, FormControl, InputLabel, IconButton, Divider, Tooltip
+    Select, MenuItem, FormControl, InputLabel, IconButton, Divider, Tooltip, Paper, Grid
 } from '@mui/material';
 import {
     Business as OrgIcon,
@@ -17,11 +17,14 @@ import {
     SwapHoriz as TransferIcon,
     Storage as StorageIcon,
     SwitchAccount as SwitchIcon,
+    FactCheck as ApprovalIcon,
+    Edit as EditIcon
 } from '@mui/icons-material';
 import api from '../services/api';
 import RoleHierarchyCanvas from '../components/organization/RoleHierarchyCanvas';
 import { useAuthStore } from '../store/authStore';
 import ConfirmModal from '../components/modals/ConfirmModal';
+import ApprovalTemplateModal from '../components/organization/ApprovalTemplateModal';
 
 export default function OrganizationSettings() {
     const user = useAuthStore(state => state.user);
@@ -40,6 +43,11 @@ export default function OrganizationSettings() {
     const [transferModalOpen, setTransferModalOpen] = useState(false);
     const [transferTargetId, setTransferTargetId] = useState('');
     const [storageLimits, setStorageLimits] = useState({});
+
+    // Approval Templates state
+    const [templateModalOpen, setTemplateModalOpen] = useState(false);
+    const [templateToEdit, setTemplateToEdit] = useState(null);
+
     const queryClient = useQueryClient();
 
     // ── Queries ────────────────────────────────────────────────────────────────
@@ -73,11 +81,32 @@ export default function OrganizationSettings() {
         enabled: !!activeOrgId
     });
 
+    const { data: templatesData } = useQuery({
+        queryKey: ['approval-templates', activeOrgId],
+        queryFn: async () => {
+            if (!activeOrgId) return [];
+            const res = await api.get(`/organizations/${activeOrgId}/approval-templates`);
+            return res.data.data.templates;
+        },
+        enabled: !!activeOrgId
+    });
+
     const userOrgs = orgsData || [];
     const orgMembers = membersData || [];
     const orgRoles = rolesData || [];
+    const orgTemplates = templatesData || [];
     const activeOrg = userOrgs.find(o => o.id === activeOrgId) || userOrgs[0];
     const isOwner = activeOrg?.owner_id === user?.id;
+
+    // ── Mutations ──────────────────────────────────────────────────────────────
+    const deleteTemplateMutation = useMutation({
+        mutationFn: async (templateId) => {
+            await api.delete(`/organizations/${activeOrgId}/approval-templates/${templateId}`);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['approval-templates', activeOrgId] });
+        }
+    });
 
     // ── Mutations ──────────────────────────────────────────────────────────────
     const createOrgMutation = useMutation({
@@ -299,6 +328,7 @@ export default function OrganizationSettings() {
                     <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 3, borderBottom: '1px solid #EAEAEA' }}>
                         <Tab icon={<PersonAddIcon fontSize="small" />} iconPosition="start" label={`Members & Invites (${orgMembers.length})`} />
                         <Tab icon={<TreeIcon fontSize="small" />} iconPosition="start" label="Hierarchy" />
+                        <Tab icon={<ApprovalIcon fontSize="small" />} iconPosition="start" label={`Approval Templates (${orgTemplates.length})`} />
                     </Tabs>
 
                     {/* ── TAB 0: Members & Invites ───────────────────────────── */}
@@ -435,6 +465,109 @@ export default function OrganizationSettings() {
                             members={orgMembers}
                             currentUserMembership={orgMembers.find(m => m.user_id === user?.id)}
                         />
+                    )}
+
+                    {/* ── TAB 2: Approval Templates ────────────────────────── */}
+                    {tab === 2 && activeOrgId && (
+                        <Box sx={{ flex: 1, overflowY: 'auto' }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+                                <Box>
+                                    <Typography variant="h6" fontWeight="bold">Approval Workflow Templates</Typography>
+                                    <Typography variant="body2" color="text.secondary">
+                                        Create reusable multi-step approval sequences for files in <strong>{activeOrg?.name}</strong>.
+                                    </Typography>
+                                </Box>
+                                <Button
+                                    variant="contained"
+                                    startIcon={<AddIcon />}
+                                    onClick={() => {
+                                        setTemplateToEdit(null);
+                                        setTemplateModalOpen(true);
+                                    }}
+                                >
+                                    New Template
+                                </Button>
+                            </Box>
+
+                            {orgTemplates.length === 0 ? (
+                                <Card variant="outlined" sx={{ p: 6, textAlign: 'center', borderRadius: 3 }}>
+                                    <ApprovalIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
+                                    <Typography variant="subtitle1" fontWeight="bold" gutterBottom>No Approval Templates Yet</Typography>
+                                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                        Create templates to quickly load preset multi-step approval chains when submitting files.
+                                    </Typography>
+                                    <Button
+                                        variant="outlined"
+                                        startIcon={<AddIcon />}
+                                        onClick={() => {
+                                            setTemplateToEdit(null);
+                                            setTemplateModalOpen(true);
+                                        }}
+                                    >
+                                        Create First Template
+                                    </Button>
+                                </Card>
+                            ) : (
+                                <Grid container spacing={2}>
+                                    {orgTemplates.map(tpl => (
+                                        <Grid item xs={12} sm={6} md={4} key={tpl.id}>
+                                            <Card variant="outlined" sx={{ borderRadius: 3, p: 2.5, height: '100%', display: 'flex', flexDirection: 'column' }}>
+                                                <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 1.5 }}>
+                                                    <Box>
+                                                        <Typography variant="subtitle1" fontWeight="bold" noWrap>{tpl.name}</Typography>
+                                                        <Typography variant="caption" color="text.secondary">
+                                                            By {tpl.creator_name || 'Member'} • {tpl.steps?.length || 0} step(s)
+                                                        </Typography>
+                                                    </Box>
+                                                    <Stack direction="row" spacing={0.5}>
+                                                        <IconButton
+                                                            size="small"
+                                                            onClick={() => {
+                                                                setTemplateToEdit(tpl);
+                                                                setTemplateModalOpen(true);
+                                                            }}
+                                                        >
+                                                            <EditIcon fontSize="small" />
+                                                        </IconButton>
+                                                        <IconButton
+                                                            size="small"
+                                                            color="error"
+                                                            onClick={() => deleteTemplateMutation.mutate(tpl.id)}
+                                                        >
+                                                            <DeleteIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Stack>
+                                                </Box>
+
+                                                <Divider sx={{ my: 1 }} />
+
+                                                <Stack spacing={1} sx={{ mt: 1, flex: 1 }}>
+                                                    {tpl.steps?.map((step, idx) => (
+                                                        <Paper key={step.id || idx} variant="outlined" sx={{ p: 1, px: 1.5, bgcolor: '#FAFAFA', borderRadius: 1.5 }}>
+                                                            <Typography variant="caption" fontWeight="bold" color="primary" display="block">
+                                                                Step {step.step_number}: {step.role_name}
+                                                            </Typography>
+                                                            <Typography variant="caption" color="text.secondary">
+                                                                {step.approver_name ? `Approver: ${step.approver_name}` : 'Any member in role'}
+                                                            </Typography>
+                                                        </Paper>
+                                                    ))}
+                                                </Stack>
+                                            </Card>
+                                        </Grid>
+                                    ))}
+                                </Grid>
+                            )}
+
+                            <ApprovalTemplateModal
+                                isOpen={templateModalOpen}
+                                onClose={() => setTemplateModalOpen(false)}
+                                orgId={activeOrgId}
+                                templateToEdit={templateToEdit}
+                                roles={orgRoles}
+                                members={orgMembers}
+                            />
+                        </Box>
                     )}
                 </>
             )}

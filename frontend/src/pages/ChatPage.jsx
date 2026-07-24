@@ -21,6 +21,22 @@ function ChatInner({ isAddFriendOpen, setIsAddFriendOpen, sdkAppId, userId, user
     const { setActiveConversation } = useConversationListState();
     const [loginStatus, setLoginStatus] = useState('idle'); // idle | loading | success | error
 
+    // Filter out non-critical background warnings emitted by Tencent TUIKit internal CoHostState module
+    useEffect(() => {
+        const originalConsoleError = console.error;
+        console.error = (...args) => {
+            const firstArg = args[0] ? String(args[0]) : '';
+            if (firstArg.includes('[CoHostState]') || firstArg.includes('not inited')) {
+                return;
+            }
+            originalConsoleError.apply(console, args);
+        };
+
+        return () => {
+            console.error = originalConsoleError;
+        };
+    }, []);
+
     // Login via LoginStore (the correct way per Tencent architecture)
     useEffect(() => {
         if (!sdkAppId || !userId || !userSig) return;

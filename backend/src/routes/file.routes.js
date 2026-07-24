@@ -11,11 +11,14 @@ router.route('/')
     .post(fileController.createFileRecord)
     .get(fileController.listFiles);
 
+router.get('/starred', fileController.getStarredFiles);
+
 router.route('/:id')
     .get(fileController.getFile)
     .put(fileController.updateFile)
     .delete(fileController.deleteFile);
 
 router.post('/:id/copy', fileController.copyFile);
+router.patch('/:id/star', fileController.toggleStar);
 
 module.exports = router;

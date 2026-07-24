@@ -13,6 +13,9 @@ import ChatPage from './pages/ChatPage';
 import SharedWithMe from './pages/SharedWithMe';
 import ApprovalsPage from './pages/ApprovalsPage';
 import OrganizationSettings from './pages/OrganizationSettings';
+import StarredFiles from './pages/StarredFiles';
+import CompanyDrivePage from './pages/CompanyDrivePage';
+import CompanyDriveTrash from './pages/CompanyDriveTrash';
 
 const ProtectedRoute = ({ children }) => {
     const { token } = useAuthStore();
@@ -44,6 +47,10 @@ export default function App() {
                 <Route index element={<Navigate to="/drive" replace />} />
                 <Route path="drive" element={<Dashboard />} />
                 <Route path="drive/folders/:folderId" element={<Dashboard />} />
+                <Route path="starred" element={<StarredFiles />} />
+                <Route path="company-drive/:orgId" element={<CompanyDrivePage />} />
+                <Route path="company-drive/:orgId/folders/:folderId" element={<CompanyDrivePage />} />
+                <Route path="company-drive/:orgId/trash" element={<CompanyDriveTrash />} />
                 <Route path="shared" element={<SharedWithMe />} />
                 <Route path="approvals" element={<ApprovalsPage />} />
                 <Route path="organization" element={<OrganizationSettings />} />

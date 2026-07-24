@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
     Box, Typography, Button, CircularProgress, Alert, Card, 
@@ -18,6 +19,7 @@ import api from '../services/api';
 import ApprovalFlowVisualizer from '../components/approvals/ApprovalFlowVisualizer';
 
 export default function ApprovalsPage() {
+    const navigate = useNavigate();
     const [tab, setTab] = useState(0); // 0: Pending My Sign-off, 1: My Requests
     const [selectedApprovalId, setSelectedApprovalId] = useState(null);
     const [decisionModal, setDecisionModal] = useState({ open: false, requestId: null, decision: 'approved' });
@@ -106,6 +108,14 @@ export default function ApprovalsPage() {
                         </IconButton>
                     </Tooltip>
                 </Box>
+                <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<FlowIcon />}
+                    onClick={() => navigate('/organization')}
+                >
+                    Manage Templates
+                </Button>
             </Box>
 
             <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 3, borderBottom: '1px solid #EAEAEA' }}>

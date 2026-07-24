@@ -7,11 +7,23 @@ import {
     Share as ShareIcon,
     ContentCopy as CopyIcon,
     ContentCut as CutIcon,
-    FactCheck as ApprovalStatusIcon
+    FactCheck as ApprovalStatusIcon,
+    Star as StarFilledIcon,
+    StarBorder as StarOutlineIcon
 } from '@mui/icons-material';
 import ConfirmModal from '../modals/ConfirmModal';
 
-export default function ContextMenu({ onRename, onDelete, onShare, onApproval, onViewApprovalStatus, onCopy, onCut }) {
+export default function ContextMenu({
+    onRename = () => {},
+    onDelete = () => {},
+    onShare = null,
+    onApproval = null,
+    onViewApprovalStatus = null,
+    onCopy = null,
+    onCut = null,
+    onStar = null,
+    isStarred = false
+}) {
     const [anchorEl, setAnchorEl] = useState(null);
     const [isConfirmOpen, setIsConfirmOpen] = useState(false);
     const open = Boolean(anchorEl);
@@ -51,10 +63,25 @@ export default function ContextMenu({ onRename, onDelete, onShare, onApproval, o
                 anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
                 transformOrigin={{ vertical: 'top', horizontal: 'right' }}
             >
-                <MenuItem onClick={(e) => { handleClose(e); onRename(); }}>
-                    <ListItemIcon><EditIcon fontSize="small" /></ListItemIcon>
-                    <ListItemText>Rename</ListItemText>
-                </MenuItem>
+                {onStar && (
+                    <MenuItem onClick={(e) => { handleClose(e); onStar(); }}>
+                        <ListItemIcon>
+                            {isStarred ? (
+                                <StarFilledIcon fontSize="small" sx={{ color: '#F59E0B' }} />
+                            ) : (
+                                <StarOutlineIcon fontSize="small" />
+                            )}
+                        </ListItemIcon>
+                        <ListItemText>{isStarred ? 'Remove from Starred' : 'Add to Starred'}</ListItemText>
+                    </MenuItem>
+                )}
+
+                {onRename && (
+                    <MenuItem onClick={(e) => { handleClose(e); onRename(); }}>
+                        <ListItemIcon><EditIcon fontSize="small" /></ListItemIcon>
+                        <ListItemText>Rename</ListItemText>
+                    </MenuItem>
+                )}
                 
                 {onCopy && (
                     <MenuItem onClick={(e) => { handleClose(e); onCopy(); }}>
@@ -77,14 +104,14 @@ export default function ContextMenu({ onRename, onDelete, onShare, onApproval, o
                     </MenuItem>
                 )}
 
-                {onApproval && (
+                {typeof onApproval === 'function' && (
                     <MenuItem onClick={(e) => { handleClose(e); onApproval(); }}>
                         <ListItemIcon><ShareIcon fontSize="small" color="primary" /></ListItemIcon>
                         <ListItemText>Submit for Approval</ListItemText>
                     </MenuItem>
                 )}
 
-                {onViewApprovalStatus && (
+                {typeof onViewApprovalStatus === 'function' && (
                     <MenuItem onClick={(e) => { handleClose(e); onViewApprovalStatus(); }}>
                         <ListItemIcon><ApprovalStatusIcon fontSize="small" color="primary" /></ListItemIcon>
                         <ListItemText>View Approval Status</ListItemText>

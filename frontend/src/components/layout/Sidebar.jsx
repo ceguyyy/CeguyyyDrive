@@ -1,14 +1,16 @@
 import React, { useState, useRef } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/authStore';
 import CreateFolderModal from '../modals/CreateFolderModal';
 import ProfileModal from '../modals/ProfileModal';
 import { useUpload } from '../../hooks/useUpload';
 import { useItemActions } from '../../hooks/useItemActions';
+import api from '../../services/api';
 import { 
     Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, 
     Button, Box, Typography, Divider, Menu, MenuItem, Avatar, LinearProgress,
-    IconButton, Tooltip
+    IconButton, Tooltip, Collapse
 } from '@mui/material';
 import { 
     Folder as FolderIcon, 
@@ -23,8 +25,13 @@ import {
     ChevronLeft as ChevronLeftIcon,
     ChevronRight as ChevronRightIcon,
     FactCheck as ApprovalIcon,
-    Business as OrgIcon
+    Business as OrgIcon,
+    Star as StarIcon,
+    Apartment as CompanyDriveIcon,
+    ExpandLess, ExpandMore
 } from '@mui/icons-material';
+
+import CloudLogo from '../ui/CloudLogo';
 
 const EXPANDED_WIDTH = 260;
 const COLLAPSED_WIDTH = 72;
@@ -33,6 +40,7 @@ export default function Sidebar() {
     const { logout, user, totalMemory, profileModalOpen, openProfileModal, closeProfileModal } = useAuthStore();
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
+    const [isCompanyDriveOpen, setIsCompanyDriveOpen] = useState(true);
 
     const [anchorEl, setAnchorEl] = useState(null);
     const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
@@ -46,6 +54,14 @@ export default function Sidebar() {
     const uploadMutation = useUpload(currentFolderId);
     const { moveFile, moveFolder } = useItemActions(currentFolderId);
 
+    const { data: orgs = [] } = useQuery({
+        queryKey: ['organizations'],
+        queryFn: async () => {
+            const res = await api.get('/organizations');
+            return res.data.data.organizations;
+        }
+    });
+
     const handleMenuOpen = (event) => setAnchorEl(event.currentTarget);
     const handleMenuClose = () => setAnchorEl(null);
 
@@ -57,15 +73,6 @@ export default function Sidebar() {
         handleMenuClose();
         e.target.value = null; // Reset input
     };
-
-    const navItems = [
-        { name: 'My Drive', path: '/drive', icon: <FolderIcon /> },
-        { name: 'Shared with me', path: '/shared', icon: <UsersIcon /> },
-        { name: 'Approvals', path: '/approvals', icon: <ApprovalIcon /> },
-        { name: 'Organization', path: '/organization', icon: <OrgIcon /> },
-        { name: 'Trash', path: '/trash', icon: <TrashIcon /> },
-        { name: 'Chat', path: '/chat', icon: <ChatIcon /> },
-    ];
 
     const TOTAL_STORAGE_LIMIT = 15 * 1024 * 1024 * 1024; // 15 GB
     const storagePercentage = Math.min((totalMemory / TOTAL_STORAGE_LIMIT) * 100, 100);
@@ -111,16 +118,7 @@ export default function Sidebar() {
                 {/* Header Logo & Collapse Toggle */}
                 <Box sx={{ p: 2, pb: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
-                        <Box 
-                            sx={{ 
-                                width: 28, height: 28, borderRadius: 1.5, flexShrink: 0, mr: showFull ? 1.5 : 0,
-                                background: 'linear-gradient(135deg, #37352F 0%, #73726E 100%)',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                color: '#fff', fontSize: '14px', fontWeight: 'bold'
-                            }}
-                        >
-                            C
-                        </Box>
+                        <CloudLogo size={34} sx={{ mr: showFull ? 1.5 : 0 }} />
                         {showFull && (
                             <Typography variant="subtitle1" fontWeight="700" noWrap>
                                 CeguyyyDrive
@@ -223,88 +221,184 @@ export default function Sidebar() {
                 
                 {/* Navigation Links */}
                 <List sx={{ flex: 1, pt: 0, px: showFull ? 2 : 1 }}>
-                    {navItems.map((item) => {
-                        const isMyDrive = item.path === '/drive';
-                        const btnContent = (
-                            <ListItemButton 
-                                component={NavLink} 
-                                to={item.path}
-                                onDragOver={(e) => {
-                                    if (isMyDrive) {
-                                        e.preventDefault();
-                                        if (!isMyDriveDragOver) setIsMyDriveDragOver(true);
+                    {/* My Drive */}
+                    <ListItem disablePadding sx={{ mb: 0.5, display: 'block' }}>
+                        <ListItemButton 
+                            component={NavLink} 
+                            to="/drive"
+                            onDragOver={(e) => {
+                                e.preventDefault();
+                                if (!isMyDriveDragOver) setIsMyDriveDragOver(true);
+                            }}
+                            onDragLeave={(e) => {
+                                e.preventDefault();
+                                setIsMyDriveDragOver(false);
+                            }}
+                            onDrop={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setIsMyDriveDragOver(false);
+                                try {
+                                    const dataString = e.dataTransfer.getData('application/json');
+                                    if (!dataString) return;
+                                    const data = JSON.parse(dataString);
+                                    if (data.type === 'file') {
+                                        moveFile.mutate({ id: data.id, targetFolderId: null });
+                                    } else if (data.type === 'folder') {
+                                        moveFolder.mutate({ id: data.id, targetFolderId: null });
                                     }
-                                }}
-                                onDragLeave={(e) => {
-                                    if (isMyDrive) {
-                                        e.preventDefault();
-                                        setIsMyDriveDragOver(false);
-                                    }
-                                }}
-                                onDrop={(e) => {
-                                    if (!isMyDrive) return;
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    setIsMyDriveDragOver(false);
-                                    try {
-                                        const dataString = e.dataTransfer.getData('application/json');
-                                        if (!dataString) return;
-                                        const data = JSON.parse(dataString);
-                                        if (data.type === 'file') {
-                                            moveFile.mutate({ id: data.id, targetFolderId: null });
-                                        } else if (data.type === 'folder') {
-                                            moveFolder.mutate({ id: data.id, targetFolderId: null });
-                                        }
-                                    } catch (err) {}
-                                }}
-                                sx={{ 
-                                    py: 0.75, 
-                                    px: showFull ? 1.5 : 0,
-                                    justifyContent: showFull ? 'flex-start' : 'center',
-                                    borderRadius: 1,
-                                    border: isMyDrive && isMyDriveDragOver ? '2px dashed #1976d2' : '1px solid transparent',
-                                    backgroundColor: isMyDrive && isMyDriveDragOver ? 'rgba(25, 118, 210, 0.12)' : undefined,
-                                    '&.active': {
-                                        backgroundColor: isMyDrive && isMyDriveDragOver ? 'rgba(25, 118, 210, 0.15)' : 'action.selected',
-                                    },
-                                    '& .MuiListItemIcon-root': { 
-                                        minWidth: showFull ? 32 : 'auto',
-                                        justifyContent: 'center',
-                                        color: 'text.secondary' 
-                                    },
-                                    '&.active .MuiListItemIcon-root': { 
-                                        color: 'text.primary' 
-                                    },
-                                    '& .MuiListItemText-primary': { 
-                                        fontSize: '0.875rem',
-                                        fontWeight: 500,
-                                        color: 'text.secondary'
-                                    },
-                                    '&.active .MuiListItemText-primary': { 
-                                        fontWeight: 600,
-                                        color: 'text.primary'
-                                    }
-                                }}
-                            >
-                                <ListItemIcon>
-                                    {item.icon}
-                                </ListItemIcon>
-                                {showFull && <ListItemText primary={item.name} />}
-                            </ListItemButton>
-                        );
+                                } catch (err) {}
+                            }}
+                            sx={{ 
+                                py: 0.75, px: showFull ? 1.5 : 0, justifyContent: showFull ? 'flex-start' : 'center', borderRadius: 1,
+                                border: isMyDriveDragOver ? '2px dashed #1976d2' : '1px solid transparent',
+                                backgroundColor: isMyDriveDragOver ? 'rgba(25, 118, 210, 0.12)' : undefined,
+                                '&.active': { backgroundColor: 'action.selected' },
+                                '& .MuiListItemIcon-root': { minWidth: showFull ? 32 : 'auto', justifyContent: 'center', color: 'text.secondary' }
+                            }}
+                        >
+                            <ListItemIcon><FolderIcon /></ListItemIcon>
+                            {showFull && <ListItemText primary="My Drive" />}
+                        </ListItemButton>
+                    </ListItem>
 
-                        return (
-                            <ListItem key={item.name} disablePadding sx={{ mb: 0.5, display: 'block' }}>
-                                {showFull ? (
-                                    btnContent
-                                ) : (
-                                    <Tooltip title={item.name} placement="right">
-                                        {btnContent}
-                                    </Tooltip>
-                                )}
-                            </ListItem>
-                        );
-                    })}
+                    {/* Company Drive (Collapsible) */}
+                    <ListItem disablePadding sx={{ mb: 0.5, display: 'block' }}>
+                        <ListItemButton
+                            onClick={() => setIsCompanyDriveOpen(!isCompanyDriveOpen)}
+                            sx={{
+                                py: 0.75, px: showFull ? 1.5 : 0, justifyContent: showFull ? 'flex-start' : 'center', borderRadius: 1,
+                                '& .MuiListItemIcon-root': { minWidth: showFull ? 32 : 'auto', justifyContent: 'center', color: 'text.secondary' }
+                            }}
+                        >
+                            <ListItemIcon><CompanyDriveIcon /></ListItemIcon>
+                            {showFull && <ListItemText primary="Company Drive" />}
+                            {showFull && (isCompanyDriveOpen ? <ExpandLess fontSize="small" /> : <ExpandMore fontSize="small" />)}
+                        </ListItemButton>
+
+                        {showFull && (
+                            <Collapse in={isCompanyDriveOpen} timeout="auto" unmountOnExit>
+                                <List component="div" disablePadding sx={{ pl: 2 }}>
+                                    {orgs.map(org => (
+                                        <ListItemButton
+                                            key={org.id}
+                                            component={NavLink}
+                                            to={`/company-drive/${org.id}`}
+                                            sx={{
+                                                py: 0.5, px: 1.5, borderRadius: 1,
+                                                '&.active': { backgroundColor: 'action.selected' },
+                                                '& .MuiListItemText-primary': { fontSize: '0.8rem', fontWeight: 500 }
+                                            }}
+                                        >
+                                            <ListItemIcon sx={{ minWidth: 24 }}><OrgIcon sx={{ fontSize: 16 }} /></ListItemIcon>
+                                            <ListItemText primary={org.name} noWrap />
+                                        </ListItemButton>
+                                    ))}
+                                    {orgs.length === 0 && (
+                                        <Typography variant="caption" color="text.secondary" sx={{ px: 2, py: 0.5, display: 'block' }}>
+                                            No organizations
+                                        </Typography>
+                                    )}
+                                </List>
+                            </Collapse>
+                        )}
+                    </ListItem>
+
+                    {/* Starred */}
+                    <ListItem disablePadding sx={{ mb: 0.5, display: 'block' }}>
+                        <ListItemButton 
+                            component={NavLink} 
+                            to="/starred"
+                            sx={{ 
+                                py: 0.75, px: showFull ? 1.5 : 0, justifyContent: showFull ? 'flex-start' : 'center', borderRadius: 1,
+                                '&.active': { backgroundColor: 'action.selected' },
+                                '& .MuiListItemIcon-root': { minWidth: showFull ? 32 : 'auto', justifyContent: 'center', color: 'text.secondary' }
+                            }}
+                        >
+                            <ListItemIcon><StarIcon sx={{ color: '#F59E0B' }} /></ListItemIcon>
+                            {showFull && <ListItemText primary="Starred" />}
+                        </ListItemButton>
+                    </ListItem>
+
+                    {/* Shared with me */}
+                    <ListItem disablePadding sx={{ mb: 0.5, display: 'block' }}>
+                        <ListItemButton 
+                            component={NavLink} 
+                            to="/shared"
+                            sx={{ 
+                                py: 0.75, px: showFull ? 1.5 : 0, justifyContent: showFull ? 'flex-start' : 'center', borderRadius: 1,
+                                '&.active': { backgroundColor: 'action.selected' },
+                                '& .MuiListItemIcon-root': { minWidth: showFull ? 32 : 'auto', justifyContent: 'center', color: 'text.secondary' }
+                            }}
+                        >
+                            <ListItemIcon><UsersIcon /></ListItemIcon>
+                            {showFull && <ListItemText primary="Shared with me" />}
+                        </ListItemButton>
+                    </ListItem>
+
+                    {/* Approvals */}
+                    <ListItem disablePadding sx={{ mb: 0.5, display: 'block' }}>
+                        <ListItemButton 
+                            component={NavLink} 
+                            to="/approvals"
+                            sx={{ 
+                                py: 0.75, px: showFull ? 1.5 : 0, justifyContent: showFull ? 'flex-start' : 'center', borderRadius: 1,
+                                '&.active': { backgroundColor: 'action.selected' },
+                                '& .MuiListItemIcon-root': { minWidth: showFull ? 32 : 'auto', justifyContent: 'center', color: 'text.secondary' }
+                            }}
+                        >
+                            <ListItemIcon><ApprovalIcon /></ListItemIcon>
+                            {showFull && <ListItemText primary="Approvals" />}
+                        </ListItemButton>
+                    </ListItem>
+
+                    {/* Organization */}
+                    <ListItem disablePadding sx={{ mb: 0.5, display: 'block' }}>
+                        <ListItemButton 
+                            component={NavLink} 
+                            to="/organization"
+                            sx={{ 
+                                py: 0.75, px: showFull ? 1.5 : 0, justifyContent: showFull ? 'flex-start' : 'center', borderRadius: 1,
+                                '&.active': { backgroundColor: 'action.selected' },
+                                '& .MuiListItemIcon-root': { minWidth: showFull ? 32 : 'auto', justifyContent: 'center', color: 'text.secondary' }
+                            }}
+                        >
+                            <ListItemIcon><OrgIcon /></ListItemIcon>
+                            {showFull && <ListItemText primary="Organization" />}
+                        </ListItemButton>
+                    </ListItem>
+
+                    {/* Trash */}
+                    <ListItem disablePadding sx={{ mb: 0.5, display: 'block' }}>
+                        <ListItemButton 
+                            component={NavLink} 
+                            to="/trash"
+                            sx={{ 
+                                py: 0.75, px: showFull ? 1.5 : 0, justifyContent: showFull ? 'flex-start' : 'center', borderRadius: 1,
+                                '&.active': { backgroundColor: 'action.selected' },
+                                '& .MuiListItemIcon-root': { minWidth: showFull ? 32 : 'auto', justifyContent: 'center', color: 'text.secondary' }
+                            }}
+                        >
+                            <ListItemIcon><TrashIcon /></ListItemIcon>
+                            {showFull && <ListItemText primary="Trash" />}
+                        </ListItemButton>
+                    </ListItem>
+
+                    {/* Chat */}
+                    <ListItem disablePadding sx={{ mb: 0.5, display: 'block' }}>
+                        <ListItemButton 
+                            component={NavLink} 
+                            to="/chat"
+                            sx={{ 
+                                py: 0.75, px: showFull ? 1.5 : 0, justifyContent: showFull ? 'flex-start' : 'center', borderRadius: 1,
+                                '&.active': { backgroundColor: 'action.selected' },
+                                '& .MuiListItemIcon-root': { minWidth: showFull ? 32 : 'auto', justifyContent: 'center', color: 'text.secondary' }
+                            }}
+                        >
+                            <ListItemIcon><ChatIcon /></ListItemIcon>
+                            {showFull && <ListItemText primary="Chat" />}
+                        </ListItemButton>
+                    </ListItem>
                 </List>
 
                 {/* Storage & Profile Section */}

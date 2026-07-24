@@ -1,5 +1,6 @@
 const fileRepository = require('../repositories/fileRepository');
 const folderRepository = require('../repositories/folderRepository'); // Need to check if folder exists
+const favoriteRepository = require('../repositories/favoriteRepository');
 const path = require('path');
 const cosService = require('./cosService');
 const AppError = require('../utils/AppError');
@@ -106,6 +107,18 @@ class FileService {
             destinationFolderId,
             userId
         );
+    }
+
+    async toggleStar(fileId, userId) {
+        const file = await fileRepository.findByIdAndUser(fileId, userId);
+        if (!file) {
+            throw new AppError('File not found', 404);
+        }
+        return await favoriteRepository.toggleStar(userId, fileId);
+    }
+
+    async getStarredFiles(userId) {
+        return await favoriteRepository.getStarredFiles(userId);
     }
 }
 

@@ -10,13 +10,33 @@ const getFirstLetter = (name) => {
 };
 
 export default function FileGrid({ 
-    folders, files, sortBy = 'name', sortOrder = 'asc',
+    folders = [], files = [], sortBy = 'name', sortOrder = 'asc',
     selectedFolders = new Set(), selectedFiles = new Set(), 
     onToggleFolder = () => {}, onToggleFile = () => {}, 
     selectionMode = false,
-    onCopyItem, onCutItem
+    onCopyItem, onCutItem,
+    children
 }) {
-    if (folders.length === 0 && files.length === 0) {
+    if (children) {
+        return (
+            <Box sx={{ 
+                display: 'grid', 
+                gridTemplateColumns: { 
+                    xs: 'minmax(0, 1fr)', 
+                    sm: 'repeat(2, minmax(0, 1fr))', 
+                    md: 'repeat(3, minmax(0, 1fr))', 
+                    lg: 'repeat(4, minmax(0, 1fr))', 
+                    xl: 'repeat(5, minmax(0, 1fr))' 
+                }, 
+                gap: 3,
+                pb: 4
+            }}>
+                {children}
+            </Box>
+        );
+    }
+
+    if ((!folders || folders.length === 0) && (!files || files.length === 0)) {
         return (
             <Box sx={{ 
                 flex: 1, 

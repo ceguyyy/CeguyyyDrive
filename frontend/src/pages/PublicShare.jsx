@@ -8,10 +8,11 @@ import {
     Download as DownloadIcon,
     Visibility as PreviewIcon,
     ContentCopy as CopyIcon,
-    ArrowBack as ArrowBackIcon
+    ArrowBack as ArrowBackIcon,
+    Lock as LockIcon
 } from '@mui/icons-material';
 import { 
-    Box, Typography, Button, CircularProgress, Card, Container, Stack, Alert 
+    Box, Typography, Button, CircularProgress, Card, Container, Stack, Alert, TextField 
 } from '@mui/material';
 import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
@@ -32,14 +33,19 @@ export default function PublicShare() {
     const [previewFile, setPreviewFile] = useState(null);
     const [copySuccess, setCopySuccess] = useState('');
     const [copyError, setCopyError] = useState('');
+    const [passwordInput, setPasswordInput] = useState('');
+    const [submittedPassword, setSubmittedPassword] = useState('');
     const queryClient = useQueryClient();
 
     const { data, isLoading, error } = useQuery({
-        queryKey: ['public-share', token],
+        queryKey: ['public-share', token, submittedPassword],
         queryFn: async () => {
-            const res = await api.get(`/shares/public/${token}`);
+            const res = await api.get(`/shares/public/${token}`, {
+                params: { password: submittedPassword }
+            });
             return res.data.data;
-        }
+        },
+        retry: false
     });
 
     const copyToDriveMutation = useMutation({
@@ -64,23 +70,69 @@ export default function PublicShare() {
             <CircularProgress />
         </Box>
     );
-    
-    if (error) return (
-        <Container component="main" maxWidth="sm" sx={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Card elevation={3} sx={{ width: '100%', textAlign: 'center', p: 4, borderRadius: 3 }}>
-                <ErrorIcon sx={{ fontSize: 64, color: 'error.main', mb: 2 }} />
-                <Typography variant="h5" fontWeight="bold" color="error" gutterBottom>
-                    Link Invalid or Expired
-                </Typography>
-                <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-                    {error.response?.data?.message || 'This share link is no longer active or has expired.'}
-                </Typography>
-                <Button variant="outlined" onClick={() => navigate('/drive')}>
-                    Go to My Drive
-                </Button>
-            </Card>
-        </Container>
-    );
+
+    if (error) {
+        // Password required or incorrect (401)
+        if (error.response?.status === 401) {
+            const isIncorrect = error.response?.data?.message === 'Incorrect password';
+
+            return (
+                <Container component="main" maxWidth="sm" sx={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Card elevation={3} sx={{ width: '100%', textAlign: 'center', p: 4, borderRadius: 3 }}>
+                        <Box sx={{ width: 80, height: 80, borderRadius: '50%', bgcolor: 'warning.light', display: 'flex', alignItems: 'center', justifyContent: 'center', mx: 'auto', mb: 2 }}>
+                            <LockIcon sx={{ fontSize: 48, color: 'warning.main' }} />
+                        </Box>
+                        <Typography variant="h5" fontWeight="bold" gutterBottom>
+                            Password Protected Link
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                            This share link requires a password to view its contents.
+                        </Typography>
+
+                        {isIncorrect && (
+                            <Alert severity="error" sx={{ mb: 2 }}>
+                                Incorrect password. Please try again.
+                            </Alert>
+                        )}
+
+                        <Box component="form" onSubmit={(e) => { e.preventDefault(); setSubmittedPassword(passwordInput); }}>
+                            <TextField
+                                fullWidth
+                                size="small"
+                                type="password"
+                                label="Enter Password"
+                                value={passwordInput}
+                                onChange={(e) => setPasswordInput(e.target.value)}
+                                required
+                                sx={{ mb: 2 }}
+                            />
+                            <Button type="submit" variant="contained" fullWidth size="large" disabled={!passwordInput.trim()}>
+                                Unlock Link
+                            </Button>
+                        </Box>
+                    </Card>
+                </Container>
+            );
+        }
+
+        // Generic error card (404/410)
+        return (
+            <Container component="main" maxWidth="sm" sx={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Card elevation={3} sx={{ width: '100%', textAlign: 'center', p: 4, borderRadius: 3 }}>
+                    <ErrorIcon sx={{ fontSize: 64, color: 'error.main', mb: 2 }} />
+                    <Typography variant="h5" fontWeight="bold" color="error" gutterBottom>
+                        Link Invalid or Expired
+                    </Typography>
+                    <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+                        {error.response?.data?.message || 'This share link is no longer active or has expired.'}
+                    </Typography>
+                    <Button variant="outlined" onClick={() => navigate('/drive')}>
+                        Go to My Drive
+                    </Button>
+                </Card>
+            </Container>
+        );
+    }
 
     const isFile = data?.type === 'file';
     const item = isFile ? data.file : data.folder;

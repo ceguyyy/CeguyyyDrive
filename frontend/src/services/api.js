@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-    baseURL: 'http://localhost:8080/v1',
+    baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080/v1',
     headers: {
         'Content-Type': 'application/json'
     }
@@ -18,10 +18,11 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
     (response) => response,
     (error) => {
-        if (error.response?.status === 401) {
+        const isPublicShareReq = error.config?.url?.includes('/shares/public/');
+        if (error.response?.status === 401 && !isPublicShareReq) {
             localStorage.removeItem('token');
-            // If we are not on the login page, redirect
-            if (window.location.pathname !== '/login') {
+            // If we are not on the login page or public share page, redirect
+            if (window.location.pathname !== '/login' && !window.location.pathname.startsWith('/s/')) {
                 window.location.href = '/login';
             }
         }

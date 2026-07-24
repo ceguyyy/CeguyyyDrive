@@ -172,6 +172,18 @@ class ShareService {
         }
         return updated;
     }
+
+    async updateSharePassword(id, userId, password) {
+        let passwordHash = null;
+        if (password && password.trim()) {
+            passwordHash = await bcrypt.hash(password.trim(), 10);
+        }
+        const updated = await shareRepository.updatePasswordHash(id, userId, passwordHash);
+        if (!updated) {
+            throw new AppError('Share link not found', 404);
+        }
+        return updated;
+    }
 }
 
 module.exports = new ShareService();

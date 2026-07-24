@@ -7,6 +7,8 @@ import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import { Container, Paper, Typography, TextField, Button, Box, Alert, Link } from '@mui/material';
 
+import CloudLogo from '../components/ui/CloudLogo';
+
 const schema = z.object({
     fullName: z.string().min(2, "Full Name must be at least 2 characters"),
     email: z.string().email("Invalid email address"),
@@ -76,16 +78,7 @@ export default function Register() {
         <Container component="main" maxWidth="xs" sx={{ height: '100vh', display: 'flex', alignItems: 'center' }}>
             <Paper elevation={0} sx={{ p: 4, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', border: '1px solid #EAEAEA', borderRadius: 2 }}>
                 <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', flexDirection: 'column' }}>
-                    <Box 
-                        sx={{ 
-                            width: 48, height: 48, borderRadius: 1.5, mb: 1.5,
-                            background: 'linear-gradient(135deg, #37352F 0%, #73726E 100%)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            color: '#fff', fontSize: '24px', fontWeight: 'bold'
-                        }}
-                    >
-                        C
-                    </Box>
+                    <CloudLogo size={56} sx={{ mb: 1.5 }} />
                     <Typography component="h1" variant="h5" fontWeight="bold">
                         Create Account
                     </Typography>

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { InsertDriveFile as DocumentIcon, Image as ImageIcon, CheckCircle as ApprovedIcon, HourglassEmpty as PendingIcon, Cancel as RejectedIcon } from '@mui/icons-material';
-import { Card, CardActionArea, CardContent, Typography, Box, Checkbox, Skeleton, Chip } from '@mui/material';
-import { useQuery } from '@tanstack/react-query';
+import { InsertDriveFile as DocumentIcon, Image as ImageIcon, CheckCircle as ApprovedIcon, HourglassEmpty as PendingIcon, Cancel as RejectedIcon, Star as StarFilledIcon, StarBorder as StarOutlineIcon } from '@mui/icons-material';
+import { Card, CardActionArea, CardContent, Typography, Box, Checkbox, Skeleton, Chip, IconButton, Tooltip } from '@mui/material';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../services/api';
 import ContextMenu from '../../components/ui/ContextMenu';
 import RenameModal from '../../components/modals/RenameModal';
@@ -25,17 +25,34 @@ function formatBytes(bytes) {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
-export default function FileCard({ file, selected = false, onSelect = () => {}, selectionMode = false, onCopyItem, onCutItem }) {
+export default function FileCard({ 
+    file, selected = false, onSelect = () => {}, selectionMode = false, 
+    onCopyItem, onCutItem, customRenameFile, customDeleteFile 
+}) {
     const [isRenameOpen, setIsRenameOpen] = useState(false);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
     const [isShareOpen, setIsShareOpen] = useState(false);
     const [isApprovalOpen, setIsApprovalOpen] = useState(false);
     const [isApprovalMetaOpen, setIsApprovalMetaOpen] = useState(false);
-    const { renameFile, deleteFile } = useItemActions(file.folder_id);
+    const { renameFile: defaultRename, deleteFile: defaultDelete } = useItemActions(file.folder_id);
+    const renameFile = customRenameFile || defaultRename;
+    const deleteFile = customDeleteFile || defaultDelete;
+    const queryClient = useQueryClient();
 
     const displayName = file.original_name || file.name;
     const isImage = file.mime_type?.startsWith('image/');
     const approvalBadge = file.approval_status ? APPROVAL_BADGE[file.approval_status] : null;
+
+    const starMutation = useMutation({
+        mutationFn: async () => {
+            const res = await api.patch(`/files/${file.id}/star`);
+            return res.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['files'] });
+            queryClient.invalidateQueries({ queryKey: ['starred-files'] });
+        }
+    });
 
     const { data: thumbnailUrl, isLoading: isThumbnailLoading } = useQuery({
         queryKey: ['thumbnail', file.id],
@@ -70,6 +87,7 @@ export default function FileCard({ file, selected = false, onSelect = () => {}, 
                     display: 'flex', flexDirection: 'column', position: 'relative',
                     border: selected ? '2px solid #1976d2' : '1px solid transparent',
                     '&:hover .selection-checkbox': { opacity: 1 },
+                    '&:hover .star-button': { opacity: 1 },
                     cursor: 'grab',
                     '&:active': { cursor: 'grabbing' }
                 }}
@@ -80,11 +98,43 @@ export default function FileCard({ file, selected = false, onSelect = () => {}, 
                     onChange={(e) => { e.stopPropagation(); onSelect(); }}
                     onClick={(e) => e.stopPropagation()}
                     sx={{ 
-                        position: 'absolute', top: 4, left: 4, zIndex: 2,
+                        position: 'absolute', top: 4, left: 4, zIndex: 5,
                         opacity: selected || selectionMode ? 1 : 0, transition: 'opacity 0.2s'
                     }}
                 />
-                <CardActionArea onClick={handleCardClick} sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                
+                <Tooltip title={file.is_starred ? "Remove from Starred" : "Add to Starred"} placement="top">
+                    <IconButton
+                        className="star-button"
+                        size="small"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            starMutation.mutate();
+                        }}
+                        sx={{
+                            position: 'absolute', top: 8, right: 8, zIndex: 10,
+                            opacity: file.is_starred ? 1 : 0,
+                            transition: 'all 0.2s ease-in-out',
+                            color: file.is_starred ? '#D97706' : '#9CA3AF',
+                            bgcolor: file.is_starred ? 'rgba(254, 243, 199, 0.95)' : 'rgba(255, 255, 255, 0.9)',
+                            border: file.is_starred ? '1px solid rgba(245, 158, 11, 0.4)' : '1px solid rgba(0,0,0,0.08)',
+                            boxShadow: file.is_starred ? '0 2px 8px rgba(245, 158, 11, 0.25)' : '0 2px 6px rgba(0,0,0,0.08)',
+                            backdropFilter: 'blur(4px)',
+                            '&:hover': {
+                                bgcolor: file.is_starred ? '#FEF3C7' : '#FFFFFF',
+                                color: '#F59E0B',
+                                transform: 'scale(1.12)'
+                            },
+                            '&:active': { transform: 'scale(0.95)' },
+                            p: '4px'
+                        }}
+                    >
+                        {file.is_starred ? <StarFilledIcon sx={{ fontSize: 18 }} /> : <StarOutlineIcon sx={{ fontSize: 18 }} />}
+                    </IconButton>
+                </Tooltip>
+
+                <CardActionArea component="div" onClick={handleCardClick} sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                     <Box sx={{ 
                         bgcolor: '#F7F7F5', 
                         flex: 1, 
@@ -123,7 +173,7 @@ export default function FileCard({ file, selected = false, onSelect = () => {}, 
                                 size="small"
                                 color={approvalBadge.color}
                                 onClick={(e) => { e.stopPropagation(); setIsApprovalMetaOpen(true); }}
-                                sx={{ position: 'absolute', top: 6, right: 6, height: 22, fontSize: '0.65rem', '& .MuiChip-icon': { ml: 0.5 } }}
+                                sx={{ position: 'absolute', top: 8, right: 44, zIndex: 4, height: 22, fontSize: '0.65rem', '& .MuiChip-icon': { ml: 0.5 } }}
                             />
                         )}
                     </Box>
@@ -138,6 +188,8 @@ export default function FileCard({ file, selected = false, onSelect = () => {}, 
                         </Typography>
                     </Box>
                     <ContextMenu
+                        isStarred={file.is_starred}
+                        onStar={() => starMutation.mutate()}
                         onRename={() => setIsRenameOpen(true)}
                         onDelete={() => deleteFile.mutate(file.id)}
                         onShare={() => setIsShareOpen(true)}

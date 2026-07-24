@@ -17,6 +17,7 @@ router.get('/sent', shareController.getSharedByMe);
 router.delete('/received/:id', shareController.removeReceivedShare);
 router.get('/:token', shareController.accessSharedResource);
 router.patch('/:id', shareController.updateShareExpiration);
+router.patch('/:id/password', shareController.updateSharePassword);
 router.delete('/:id', shareController.revokeShare);
 
 module.exports = router;

@@ -19,15 +19,21 @@ class CosService {
         return `${userId}/${uuid}_${fileName.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
     }
 
-    getPresignedUploadUrl(objectKey) {
+    getPresignedUploadUrl(objectKey, mimeType = null) {
         return new Promise((resolve, reject) => {
+            const headers = {};
+            if (mimeType) {
+                headers['Content-Type'] = mimeType;
+            }
+
             this.cos.getObjectUrl({
                 Bucket: this.bucket,
                 Region: this.region,
                 Key: objectKey,
                 Method: 'PUT',
                 Sign: true,
-                Expires: 900 // 15 minutes
+                Expires: 900, // 15 minutes
+                Headers: Object.keys(headers).length > 0 ? headers : undefined
             }, (err, data) => {
                 if (err) {
                     console.error('COS Upload Sign Error:', err);

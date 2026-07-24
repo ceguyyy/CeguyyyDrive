@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const AppError = require('../utils/AppError');
 
 class ApprovalRepository {
     async createApprovalRequest(orgId, fileId, folderId, requesterId, title, steps) {
@@ -41,7 +42,28 @@ class ApprovalRepository {
 
     async findPendingApprovalsForUser(userId) {
         const result = await db.query(
-            `SELECT ar.*, st.id as current_step_id, st.step_number, st.role_name,
+            `WITH user_roles AS (
+                SELECT om.organization_id, om.role_name
+                FROM organization_members om
+                WHERE om.user_id = $1 AND om.status = 'accepted'
+                UNION
+                SELECT o.id AS organization_id, 'Owner' AS role_name
+                FROM organizations o
+                WHERE o.owner_id = $1
+             ),
+             authorized_roles AS (
+                WITH RECURSIVE role_tree AS (
+                    SELECT r.organization_id, r.id AS role_id, r.name AS role_name
+                    FROM organization_roles r
+                    JOIN user_roles ur ON r.organization_id = ur.organization_id AND LOWER(r.name) = LOWER(ur.role_name)
+                    UNION ALL
+                    SELECT r.organization_id, r.id AS role_id, r.name AS role_name
+                    FROM organization_roles r
+                    JOIN role_tree rt ON r.parent_role_id = rt.role_id
+                )
+                SELECT DISTINCT organization_id, role_name FROM role_tree
+             )
+             SELECT ar.*, st.id as current_step_id, st.step_number, st.role_name,
                     u.full_name as requester_name, u.email as requester_email, u.profile_picture as requester_avatar,
                     f.original_name as file_name, f.size as file_size, f.mime_type,
                     fd.name as folder_name, o.name as organization_name
@@ -51,9 +73,19 @@ class ApprovalRepository {
              JOIN organizations o ON ar.organization_id = o.id
              LEFT JOIN files f ON ar.file_id = f.id
              LEFT JOIN folders fd ON ar.folder_id = fd.id
-             WHERE (st.approver_id = $1 OR st.approver_id IS NULL)
-               AND st.status = 'pending'
+             WHERE st.status = 'pending'
                AND ar.status = 'pending'
+               AND (
+                   st.approver_id = $1
+                   OR (
+                       st.approver_id IS NULL
+                       AND EXISTS (
+                           SELECT 1 FROM authorized_roles auth
+                           WHERE auth.organization_id = ar.organization_id
+                             AND LOWER(auth.role_name) = LOWER(st.role_name)
+                       )
+                   )
+               )
              ORDER BY ar.created_at DESC`,
             [userId]
         );
@@ -111,10 +143,52 @@ class ApprovalRepository {
             const reqRes = await client.query(`SELECT * FROM approval_requests WHERE id = $1 FOR UPDATE`, [requestId]);
             const request = reqRes.rows[0];
             if (!request || request.status !== 'pending') {
-                throw new Error('Approval request is not pending');
+                throw new AppError('Approval request is not pending', 400);
             }
 
             const currentStepNum = request.current_step_index;
+            const stepRes = await client.query(
+                `SELECT * FROM approval_steps WHERE request_id = $1 AND step_number = $2 FOR UPDATE`,
+                [requestId, currentStepNum]
+            );
+            const currentStep = stepRes.rows[0];
+            if (!currentStep) {
+                throw new AppError('Approval step not found', 404);
+            }
+
+            // Authorization check
+            if (currentStep.approver_id) {
+                if (currentStep.approver_id !== approverId) {
+                    throw new AppError('You are not authorized to act on this approval step', 403);
+                }
+            } else {
+                // Check if approver is authorized via role hierarchy
+                const authCheck = await client.query(
+                    `WITH user_roles AS (
+                        SELECT om.organization_id, om.role_name
+                        FROM organization_members om
+                        WHERE om.organization_id = $1 AND om.user_id = $2 AND om.status = 'accepted'
+                        UNION
+                        SELECT id AS organization_id, 'Owner' AS role_name
+                        FROM organizations WHERE id = $1 AND owner_id = $2
+                     ),
+                     role_tree AS (
+                        SELECT r.id AS role_id, r.name AS role_name
+                        FROM organization_roles r
+                        JOIN user_roles ur ON r.organization_id = ur.organization_id AND LOWER(r.name) = LOWER(ur.role_name)
+                        UNION ALL
+                        SELECT r.id AS role_id, r.name AS role_name
+                        FROM organization_roles r
+                        JOIN role_tree rt ON r.parent_role_id = rt.role_id
+                     )
+                     SELECT 1 FROM role_tree WHERE LOWER(role_name) = LOWER($3)`,
+                    [request.organization_id, approverId, currentStep.role_name]
+                );
+                if (authCheck.rows.length === 0) {
+                    throw new AppError('You are not authorized to act on this approval step', 403);
+                }
+            }
+
             const now = new Date();
 
             // Update step status

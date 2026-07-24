@@ -8,10 +8,15 @@ import RenameModal from '../../components/modals/RenameModal';
 import ShareModal from '../../components/modals/ShareModal';
 import { useItemActions } from '../../hooks/useItemActions';
 
-export default function FolderCard({ folder, selected = false, onSelect = () => {}, selectionMode = false, onCopyItem, onCutItem }) {
+export default function FolderCard({ 
+    folder, selected = false, onSelect = () => {}, selectionMode = false, 
+    onCopyItem, onCutItem, onOpen, customRenameFolder, customDeleteFolder 
+}) {
     const [isRenameOpen, setIsRenameOpen] = useState(false);
     const [isShareOpen, setIsShareOpen] = useState(false);
-    const { renameFolder, deleteFolder, moveFile, moveFolder } = useItemActions(folder.parent_id);
+    const { renameFolder: defaultRename, deleteFolder: defaultDelete, moveFile, moveFolder } = useItemActions(folder.parent_id);
+    const renameFolder = customRenameFolder || defaultRename;
+    const deleteFolder = customDeleteFolder || defaultDelete;
     const navigate = useNavigate();
     const [isDragOver, setIsDragOver] = useState(false);
 
@@ -19,6 +24,8 @@ export default function FolderCard({ folder, selected = false, onSelect = () => 
         if (selectionMode) {
             e.preventDefault();
             onSelect();
+        } else if (onOpen) {
+            onOpen(folder.id);
         } else {
             navigate('/drive/folders/' + folder.id);
         }
@@ -83,6 +90,7 @@ export default function FolderCard({ folder, selected = false, onSelect = () => 
                     }}
                 />
                 <CardActionArea 
+                    component="div"
                     onClick={handleCardClick}
                     sx={{ flex: 1, display: 'flex', flexDirection: 'column', p: 2 }}
                 >

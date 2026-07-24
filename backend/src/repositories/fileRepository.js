@@ -47,8 +47,10 @@ class FileRepository {
 
     async findByFolderAndUser(folderId, userId) {
         let query = `
-            SELECT f.*, ar.id as approval_request_id, ar.title as approval_title, ar.status as approval_status
+            SELECT f.*, (fav.id IS NOT NULL) AS is_starred,
+                   ar.id as approval_request_id, ar.title as approval_title, ar.status as approval_status
             FROM files f
+            LEFT JOIN favorites fav ON f.id = fav.file_id AND fav.user_id = $1
             LEFT JOIN LATERAL (
                 SELECT id, title, status
                 FROM approval_requests

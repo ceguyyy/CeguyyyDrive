@@ -24,6 +24,7 @@ export default function ShareModal({ isOpen, onClose, itemType, itemId, itemName
 
     // Public link state
     const [expirationOption, setExpirationOption] = useState('never'); // never, 1h, 1d, 7d, 30d
+    const [password, setPassword] = useState('');
     const [linkLoading, setLinkLoading] = useState(false);
     const [publicLink, setPublicLink] = useState('');
     const [linkCopied, setLinkCopied] = useState(false);
@@ -71,6 +72,7 @@ export default function ShareModal({ isOpen, onClose, itemType, itemId, itemName
             const expiresAt = getExpirationDate(expirationOption);
             const payload = {
                 expiresAt,
+                ...(password.trim() ? { password: password.trim() } : {}),
                 ...(itemType === 'file' ? { fileId: itemId } : { folderId: itemId })
             };
             const res = await api.post('/shares', payload);
@@ -145,7 +147,7 @@ export default function ShareModal({ isOpen, onClose, itemType, itemId, itemName
 
                         {linkError && <Alert severity="error" sx={{ mb: 2 }}>{linkError}</Alert>}
 
-                        <Box sx={{ mb: 3 }}>
+                        <Box sx={{ mb: 2 }}>
                             <FormControl fullWidth size="small">
                                 <InputLabel id="expiration-label">Link Expiration Time</InputLabel>
                                 <Select
@@ -165,6 +167,21 @@ export default function ShareModal({ isOpen, onClose, itemType, itemId, itemName
                                     <MenuItem value="30d">30 Days</MenuItem>
                                 </Select>
                             </FormControl>
+                        </Box>
+
+                        <Box sx={{ mb: 3 }}>
+                            <TextField
+                                fullWidth
+                                size="small"
+                                type="password"
+                                label="Password (Optional)"
+                                placeholder="Leave blank for no password"
+                                value={password}
+                                onChange={(e) => {
+                                    setPassword(e.target.value);
+                                    setPublicLink('');
+                                }}
+                            />
                         </Box>
 
                         {publicLink ? (

@@ -124,3 +124,18 @@ exports.updateShareExpiration = async (req, res, next) => {
         next(err);
     }
 };
+
+exports.updateSharePassword = async (req, res, next) => {
+    try {
+        const id = req.params.id;
+        const { password } = req.body;
+        const share = await shareService.updateSharePassword(id, req.user.id, password);
+        
+        res.status(200).json({
+            status: 'success',
+            data: { share }
+        });
+    } catch (err) {
+        next(err);
+    }
+};

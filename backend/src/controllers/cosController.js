@@ -25,8 +25,8 @@ exports.generateUploadUrl = async (req, res, next) => {
             fileName, size, mimeType, storageKey, folderId, req.user.id
         );
 
-        // 3. Generate the presigned URL
-        const uploadUrl = await cosService.getPresignedUploadUrl(storageKey);
+        // 3. Generate the presigned URL with Content-Type header signed
+        const uploadUrl = await cosService.getPresignedUploadUrl(storageKey, mimeType);
 
         res.status(200).json({
             status: 'success',
