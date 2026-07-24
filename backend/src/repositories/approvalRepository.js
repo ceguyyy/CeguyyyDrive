@@ -42,7 +42,7 @@ class ApprovalRepository {
     async findPendingApprovalsForUser(userId) {
         const result = await db.query(
             `SELECT ar.*, st.id as current_step_id, st.step_number, st.role_name,
-                    u.full_name as requester_name, u.email as requester_email, u.avatar_url as requester_avatar,
+                    u.full_name as requester_name, u.email as requester_email, u.profile_picture as requester_avatar,
                     f.original_name as file_name, f.size as file_size, f.mime_type,
                     fd.name as folder_name, o.name as organization_name
              FROM approval_requests ar
@@ -78,7 +78,7 @@ class ApprovalRepository {
 
     async findApprovalRequestById(id) {
         const reqRes = await db.query(
-            `SELECT ar.*, u.full_name as requester_name, u.email as requester_email, u.avatar_url as requester_avatar,
+            `SELECT ar.*, u.full_name as requester_name, u.email as requester_email, u.profile_picture as requester_avatar,
                     f.original_name as file_name, f.mime_type, f.size as file_size,
                     fd.name as folder_name, o.name as organization_name
              FROM approval_requests ar
@@ -92,7 +92,7 @@ class ApprovalRepository {
         if (reqRes.rows.length === 0) return null;
 
         const stepsRes = await db.query(
-            `SELECT st.*, u.full_name as approver_name, u.email as approver_email, u.avatar_url as approver_avatar
+            `SELECT st.*, u.full_name as approver_name, u.email as approver_email, u.profile_picture as approver_avatar
              FROM approval_steps st
              LEFT JOIN users u ON st.approver_id = u.id
              WHERE st.request_id = $1
