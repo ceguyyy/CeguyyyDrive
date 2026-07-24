@@ -40,16 +40,28 @@ exports.register = async (req, res, next) => {
 exports.login = async (req, res, next) => {
     try {
         const validatedData = loginSchema.parse(req.body);
-        const { email, password, ticket, randstr } = validatedData;
-
-        // Verify Captcha (Disabled for local testing)
-        // const userIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-        // const isValidCaptcha = await captchaService.verifyCaptcha(ticket, randstr, userIp);
-        // if (isValidCaptcha !== true) {
-        //     return res.status(400).json({ status: 'error', message: typeof isValidCaptcha === 'string' ? isValidCaptcha : 'Captcha verification failed' });
-        // }
+        const { email, password } = validatedData;
 
         const result = await authService.login(email, password);
+
+        res.status(200).json({
+            status: 'success',
+            data: result
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+const verifyOtpSchema = z.object({
+    email: z.string().email(),
+    otpCode: z.string().min(6).max(6)
+});
+
+exports.verifyOtp = async (req, res, next) => {
+    try {
+        const { email, otpCode } = verifyOtpSchema.parse(req.body);
+        const result = await authService.verifyLoginOtp(email, otpCode);
 
         res.status(200).json({
             status: 'success',

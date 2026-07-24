@@ -2,6 +2,8 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const userRepository = require('../repositories/userRepository');
 const roleRepository = require('../repositories/roleRepository');
+const otpRepository = require('../repositories/otpRepository');
+const telegramService = require('./telegramService');
 const AppError = require('../utils/AppError');
 
 class AuthService {
@@ -34,7 +36,7 @@ class AuthService {
         }
 
         const passwordHash = await bcrypt.hash(password, 12);
-        const newUser = await userRepository.create(email, passwordHash, fullName, role.id, formattedKey);
+        const newUser = await userRepository.create(email, passwordHash, fullName, role.id, accessKey.trim());
         
         newUser.role_name = role.name;
 
@@ -55,10 +57,40 @@ class AuthService {
             throw new AppError('Incorrect email or password', 401);
         }
 
+        // Generate 6-digit OTP code
+        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+        const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes expiration
+
+        await otpRepository.create(user.id, user.email, otpCode, expiresAt);
+        await telegramService.sendOtpMessage(user.email, otpCode);
+
+        return {
+            requiresOtp: true,
+            email: user.email,
+            message: 'OTP has been sent to Telegram. It is valid for 5 minutes.'
+        };
+    }
+
+    async verifyLoginOtp(email, otpCode) {
+        if (!email || !otpCode) {
+            throw new AppError('Email and OTP code are required', 400);
+        }
+
+        const otpRecord = await otpRepository.findValidOtp(email, otpCode.trim());
+        if (!otpRecord) {
+            throw new AppError('Invalid or expired OTP code (5-minute expiration limit)', 400);
+        }
+
+        const user = await userRepository.findByEmail(email);
+        if (!user) {
+            throw new AppError('User not found', 404);
+        }
+
+        await otpRepository.markAsUsed(otpRecord.id);
+
         const accessToken = this._signToken(user.id, user.role_name, 'access');
         const refreshToken = this._signToken(user.id, user.role_name, 'refresh');
 
-        // Remove password hash from output
         delete user.password_hash;
 
         return { user, accessToken, refreshToken };
