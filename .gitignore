@@ -53,3 +53,8 @@ frontend/test-error.cjs
 New Text Document.txt
 .cache/
 .temp/
+
+# ============================================
+# Git worktrees (isolated dev workspaces)
+# ============================================
+.worktrees/
