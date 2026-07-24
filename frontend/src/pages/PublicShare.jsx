@@ -151,7 +151,7 @@ export default function PublicShare() {
                                 </Button>
                             )}
 
-                            {/* Download File Button (Always available for guests and logged-in users) */}
+                            {/* Download File Button (Always available for guests and logged-in users for files) */}
                             <Button 
                                 href={downloadUrl} 
                                 target="_blank" 
@@ -167,7 +167,21 @@ export default function PublicShare() {
                         </>
                     )}
 
-                    {/* Copy to My Drive button (Rendered only if logged in) */}
+                    {/* Guest user opening a shared folder */}
+                    {!isFile && !authToken && (
+                        <Button 
+                            variant="contained"
+                            color="primary"
+                            size="large"
+                            startIcon={<CopyIcon />}
+                            onClick={() => navigate('/login')}
+                            sx={{ py: 1.5, fontWeight: 'bold' }}
+                        >
+                            Log in to Save to My Drive
+                        </Button>
+                    )}
+
+                    {/* Copy to My Drive button (Rendered if logged in for both files & folders) */}
                     {authToken && (
                         <Button 
                             variant="outlined"
