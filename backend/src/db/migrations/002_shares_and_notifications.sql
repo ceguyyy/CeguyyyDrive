@@ -1,7 +1,9 @@
--- Add shared_with column to shares table if it doesn't exist
+-- Add shared_with and token columns to shares table if they don't exist
 ALTER TABLE shares ADD COLUMN IF NOT EXISTS shared_with UUID REFERENCES users(id) ON DELETE CASCADE;
+ALTER TABLE shares ADD COLUMN IF NOT EXISTS token VARCHAR(255);
 
 CREATE INDEX IF NOT EXISTS idx_shares_shared_with ON shares(shared_with);
+CREATE INDEX IF NOT EXISTS idx_shares_token ON shares(token);
 
 -- Create notifications table for inbox notifications
 CREATE TABLE IF NOT EXISTS notifications (
