@@ -1,16 +1,38 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/authStore';
 import api from '../../services/api';
 import axios from 'axios';
 import {
     Dialog, DialogTitle, DialogContent, DialogActions,
     Button, TextField, Box, Typography, Avatar, IconButton,
-    CircularProgress, Snackbar, Alert, Divider
+    CircularProgress, Snackbar, Alert, Divider,
+    Select, MenuItem, FormControl
 } from '@mui/material';
-import { PhotoCamera as PhotoCameraIcon, Save as SaveIcon } from '@mui/icons-material';
+import {
+    PhotoCamera as PhotoCameraIcon,
+    Save as SaveIcon,
+    Business as OrgIcon,
+} from '@mui/icons-material';
 
 export default function ProfileModal({ isOpen, onClose }) {
-    const { user, fetchMe } = useAuthStore();
+    const { user, fetchMe, activeOrgId, setActiveOrgId } = useAuthStore();
+    const queryClient = useQueryClient();
+
+    const { data: orgsData } = useQuery({
+        queryKey: ['organizations'],
+        queryFn: async () => {
+            const res = await api.get('/organizations');
+            return res.data.data.organizations;
+        },
+        enabled: isOpen,
+    });
+    const userOrgs = orgsData || [];
+
+    const handleOrgSwitch = (value) => {
+        setActiveOrgId(value === 'personal' ? null : value);
+        queryClient.invalidateQueries();
+    };
     
     const [fullName, setFullName] = useState('');
     const [email, setEmail] = useState('');
@@ -179,7 +201,31 @@ export default function ProfileModal({ isOpen, onClose }) {
                         Save Profile
                     </Button>
                 </Box>
-                
+
+                <Divider sx={{ my: 3 }} />
+
+                {/* Active Organization */}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+                    <OrgIcon fontSize="small" color="primary" />
+                    <Typography variant="h6" sx={{ fontSize: '1.1rem', fontWeight: 600 }}>
+                        Active Organization
+                    </Typography>
+                </Box>
+                <FormControl size="small" fullWidth>
+                    <Select
+                        value={activeOrgId || 'personal'}
+                        onChange={(e) => handleOrgSwitch(e.target.value)}
+                        displayEmpty
+                    >
+                        <MenuItem value="personal">Personal Drive</MenuItem>
+                        {userOrgs.map(org => (
+                            <MenuItem key={org.id} value={org.id}>
+                                {org.name}
+                            </MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
+
                 <Divider sx={{ my: 3 }} />
                 
                 {/* Password Change */}

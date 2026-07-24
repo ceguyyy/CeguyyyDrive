@@ -30,13 +30,12 @@ const EXPANDED_WIDTH = 260;
 const COLLAPSED_WIDTH = 72;
 
 export default function Sidebar() {
-    const { logout, user, totalMemory } = useAuthStore();
+    const { logout, user, totalMemory, profileModalOpen, openProfileModal, closeProfileModal } = useAuthStore();
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
 
     const [anchorEl, setAnchorEl] = useState(null);
     const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
-    const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
     const [isMyDriveDragOver, setIsMyDriveDragOver] = useState(false);
     
     const fileInputRef = useRef(null);
@@ -342,7 +341,7 @@ export default function Sidebar() {
                                 display: 'flex', alignItems: 'center', mb: 2, px: 1, 
                                 cursor: 'pointer', '&:hover': { opacity: 0.8 } 
                             }}
-                            onClick={() => setIsProfileModalOpen(true)}
+                            onClick={openProfileModal}
                         >
                             <Avatar 
                                 src={user?.profile_picture_url} 
@@ -360,7 +359,7 @@ export default function Sidebar() {
                         <Tooltip title={user?.full_name || 'Profile'} placement="right">
                             <Box 
                                 sx={{ display: 'flex', justifyContent: 'center', mb: 2, cursor: 'pointer' }}
-                                onClick={() => setIsProfileModalOpen(true)}
+                                onClick={openProfileModal}
                             >
                                 <Avatar 
                                     src={user?.profile_picture_url} 
@@ -410,8 +409,8 @@ export default function Sidebar() {
             />
             
             <ProfileModal
-                isOpen={isProfileModalOpen}
-                onClose={() => setIsProfileModalOpen(false)}
+                isOpen={profileModalOpen}
+                onClose={closeProfileModal}
             />
         </Box>
     );

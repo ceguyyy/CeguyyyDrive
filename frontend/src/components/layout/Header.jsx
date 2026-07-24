@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import { useAuthStore } from '../../store/authStore';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { 
-    AppBar, Toolbar, InputBase, Avatar, Box, IconButton, 
+import {
+    AppBar, Toolbar, InputBase, Box, IconButton,
     Badge, Popover, Typography, List, ListItem, ListItemButton, LinearProgress,
-    Tabs, Tab, Button, Divider 
+    Tabs, Tab, Button
 } from '@mui/material';
 import { 
     Search as SearchIcon, 
@@ -65,11 +64,10 @@ const StyledInputBase = styled(InputBase)(({ theme }) => ({
 }));
 
 export default function Header() {
-    const user = useAuthStore(state => state.user);
     const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
-    
+
     // Uploads State
     const { uploads, removeUpload } = useUploadStore();
     const uploadList = Object.entries(uploads).reverse();
@@ -244,6 +242,7 @@ export default function Header() {
                         </Box>
                     </Box>
                 </Popover>
+
             </Toolbar>
         </AppBar>
     );

@@ -5,13 +5,26 @@ export const useAuthStore = create((set) => ({
     token: localStorage.getItem('token') || null,
     user: null,
     totalMemory: 0,
+    activeOrgId: localStorage.getItem('activeOrgId') || null,
+    profileModalOpen: false,
+    openProfileModal: () => set({ profileModalOpen: true }),
+    closeProfileModal: () => set({ profileModalOpen: false }),
+    setActiveOrgId: (orgId) => {
+        if (orgId) {
+            localStorage.setItem('activeOrgId', orgId);
+        } else {
+            localStorage.removeItem('activeOrgId');
+        }
+        set({ activeOrgId: orgId });
+    },
     setAuth: (token, user) => {
         localStorage.setItem('token', token);
         set({ token, user });
     },
     logout: () => {
         localStorage.removeItem('token');
-        set({ token: null, user: null, totalMemory: 0 });
+        localStorage.removeItem('activeOrgId');
+        set({ token: null, user: null, totalMemory: 0, activeOrgId: null });
     },
     fetchMe: async () => {
         try {
