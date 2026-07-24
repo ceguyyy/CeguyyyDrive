@@ -7,7 +7,8 @@ const registerSchema = z.object({
     email: z.string().email(),
     password: z.string().min(8),
     fullName: z.string().min(2),
-    accessKey: z.string().min(1, "Access key is required"),
+    accessKey: z.string().min(1, "Primary Access key is required"),
+    secondaryAccessKey: z.string().min(1, "Secondary Access key is required"),
     role: z.enum(['owner', 'user']).optional(),
     ticket: z.string().optional(),
     randstr: z.string().optional()
@@ -23,9 +24,9 @@ const loginSchema = z.object({
 exports.register = async (req, res, next) => {
     try {
         const validatedData = registerSchema.parse(req.body);
-        const { email, password, fullName, accessKey, role } = validatedData;
+        const { email, password, fullName, accessKey, secondaryAccessKey, role } = validatedData;
 
-        const result = await authService.register(email, password, fullName, role || 'user', accessKey);
+        const result = await authService.register(email, password, fullName, role || 'user', accessKey, secondaryAccessKey);
 
         res.status(201).json({
             status: 'success',

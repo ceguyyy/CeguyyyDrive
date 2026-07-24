@@ -11,19 +11,16 @@ class AuthService {
         return jwt.sign({ id, role: role_name }, secret, { expiresIn });
     }
 
-    async register(email, password, fullName, roleName = 'user', accessKey = null) {
-        const DEFAULT_BETA_KEYS = ['BETA2026', 'CEGUYYY-BETA', 'OPENVIP', 'BETA100', 'VIP2026'];
-        const envKeys = process.env.BETA_ACCESS_KEYS 
-            ? process.env.BETA_ACCESS_KEYS.split(',').map(k => k.trim().toUpperCase())
-            : DEFAULT_BETA_KEYS;
+    async register(email, password, fullName, roleName = 'user', accessKey = null, secondaryAccessKey = null) {
+        const PRIMARY_KEY = process.env.PRIMARY_BETA_KEY || 'pTfk4VRWSgWi5CbpT5Vabx2v7vNPYAmSzCsAWa5mZePGg';
+        const SECONDARY_KEY = process.env.SECONDARY_BETA_KEY || 'mSzCsAWa5mZePGg';
 
-        if (!accessKey || typeof accessKey !== 'string') {
-            throw new AppError('Open Beta Access Key is required for registration', 400);
+        if (!accessKey || typeof accessKey !== 'string' || accessKey.trim() !== PRIMARY_KEY) {
+            throw new AppError('Invalid Primary Beta Access Key', 400);
         }
 
-        const formattedKey = accessKey.trim().toUpperCase();
-        if (!envKeys.includes(formattedKey)) {
-            throw new AppError('Invalid Open Beta Access Key. Please provide a valid invitation code to join.', 400);
+        if (!secondaryAccessKey || typeof secondaryAccessKey !== 'string' || secondaryAccessKey.trim() !== SECONDARY_KEY) {
+            throw new AppError('Invalid Secondary Beta Access Key', 400);
         }
 
         const existingUser = await userRepository.findByEmail(email);

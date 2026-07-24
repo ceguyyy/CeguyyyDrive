@@ -13,7 +13,8 @@ const schema = z.object({
     fullName: z.string().min(2, "Full Name must be at least 2 characters"),
     email: z.string().email("Invalid email address"),
     password: z.string().min(8, "Password must be at least 8 characters"),
-    accessKey: z.string().min(1, "Open Beta Access Key is required")
+    accessKey: z.string().min(1, "Primary Beta Access Key is required"),
+    secondaryAccessKey: z.string().min(1, "Secondary Beta Access Key is required")
 });
 
 export default function Register() {
@@ -99,14 +100,28 @@ export default function Register() {
                         margin="normal"
                         required
                         fullWidth
+                        type="password"
                         id="accessKey"
-                        label="Open Beta Access Key"
-                        placeholder="e.g. BETA2026"
+                        label="Primary Beta Access Key"
+                        placeholder="Enter Primary Beta Key"
                         autoComplete="off"
                         autoFocus
                         {...register('accessKey')}
                         error={!!errors.accessKey}
-                        helperText={errors.accessKey?.message || "Required for Open Beta access"}
+                        helperText={errors.accessKey?.message}
+                    />
+                    <TextField
+                        margin="normal"
+                        required
+                        fullWidth
+                        type="password"
+                        id="secondaryAccessKey"
+                        label="Secondary Beta Access Key"
+                        placeholder="Enter Secondary Beta Key"
+                        autoComplete="off"
+                        {...register('secondaryAccessKey')}
+                        error={!!errors.secondaryAccessKey}
+                        helperText={errors.secondaryAccessKey?.message}
                     />
                     <TextField
                         margin="normal"
