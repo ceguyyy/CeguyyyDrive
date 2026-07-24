@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
 import FileGrid from '../features/files/FileGrid';
 import { Typography, Box, CircularProgress, Alert, Breadcrumbs, Link, Button, IconButton, Select, MenuItem, Pagination, Fab } from '@mui/material';
-import { NavigateNext as NavigateNextIcon, CloudUpload as CloudUploadIcon, Delete as DeleteIcon, Sort as SortIcon, ArrowUpward, ArrowDownward, Download as DownloadIcon, ContentPaste as ContentPasteIcon, Close as CloseIcon, ContentCopy as CopyIcon, ContentCut as CutIcon } from '@mui/icons-material';
+import { NavigateNext as NavigateNextIcon, CloudUpload as CloudUploadIcon, Delete as DeleteIcon, Sort as SortIcon, ArrowUpward, ArrowDownward, Download as DownloadIcon, ContentPaste as ContentPasteIcon, Close as CloseIcon, ContentCopy as CopyIcon, ContentCut as CutIcon, DriveFileMove as DriveFileMoveIcon } from '@mui/icons-material';
 import { useUpload } from '../hooks/useUpload';
 import { useItemActions } from '../hooks/useItemActions';
 import { useClipboardStore } from '../store/clipboardStore';
@@ -18,6 +18,28 @@ export default function Dashboard() {
     const { clipboard, setClipboard, clearClipboard } = useClipboardStore();
     
     const [isDragging, setIsDragging] = useState(false);
+    const [hoveredBreadcrumbId, setHoveredBreadcrumbId] = useState(null);
+    const [isMoveUpDragOver, setIsMoveUpDragOver] = useState(false);
+
+    const handleItemDrop = (targetFolderId, e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setHoveredBreadcrumbId(null);
+        setIsMoveUpDragOver(false);
+        try {
+            const dataString = e.dataTransfer.getData('application/json');
+            if (!dataString) return;
+            const data = JSON.parse(dataString);
+            const sourceFolderId = currentFolderId === 'root' ? null : currentFolderId;
+            if (data.id === targetFolderId || (sourceFolderId === targetFolderId)) return;
+
+            if (data.type === 'file') {
+                moveFile.mutate({ id: data.id, targetFolderId });
+            } else if (data.type === 'folder') {
+                moveFolder.mutate({ id: data.id, targetFolderId });
+            }
+        } catch (err) {}
+    };
     
     // Sort State
     const [sortBy, setSortBy] = useState('name');
@@ -187,6 +209,7 @@ export default function Dashboard() {
     let folders = data.subfolders || [];
     let files = data.files || [];
     const currentFolder = data.folder;
+    const ancestors = data.ancestors || [];
 
     // Apply Search Filter
     if (searchQuery) {
@@ -322,12 +345,54 @@ export default function Dashboard() {
                             to="/drive" 
                             underline="hover" 
                             color={currentFolder ? 'text.secondary' : 'text.primary'}
-                            sx={{ fontSize: '1.25rem', fontWeight: currentFolder ? 500 : 700 }}
+                            onDragOver={(e) => {
+                                e.preventDefault();
+                                if (hoveredBreadcrumbId !== 'root') setHoveredBreadcrumbId('root');
+                            }}
+                            onDragLeave={(e) => {
+                                e.preventDefault();
+                                setHoveredBreadcrumbId(null);
+                            }}
+                            onDrop={(e) => handleItemDrop(null, e)}
+                            sx={{ 
+                                fontSize: '1.25rem', 
+                                fontWeight: currentFolder ? 500 : 700,
+                                px: 1, py: 0.5, borderRadius: 1, transition: 'all 0.2s',
+                                border: hoveredBreadcrumbId === 'root' ? '2px dashed #1976d2' : '1px solid transparent',
+                                bgcolor: hoveredBreadcrumbId === 'root' ? 'rgba(25, 118, 210, 0.12)' : 'transparent'
+                            }}
                         >
                             My Drive
                         </Link>
+                        {ancestors.map((anc) => (
+                            <Link 
+                                key={anc.id}
+                                component={RouterLink} 
+                                to={`/drive/folders/${anc.id}`}
+                                underline="hover" 
+                                color="text.secondary"
+                                onDragOver={(e) => {
+                                    e.preventDefault();
+                                    if (hoveredBreadcrumbId !== anc.id) setHoveredBreadcrumbId(anc.id);
+                                }}
+                                onDragLeave={(e) => {
+                                    e.preventDefault();
+                                    setHoveredBreadcrumbId(null);
+                                }}
+                                onDrop={(e) => handleItemDrop(anc.id, e)}
+                                sx={{ 
+                                    fontSize: '1.25rem', 
+                                    fontWeight: 500,
+                                    px: 1, py: 0.5, borderRadius: 1, transition: 'all 0.2s',
+                                    border: hoveredBreadcrumbId === anc.id ? '2px dashed #1976d2' : '1px solid transparent',
+                                    bgcolor: hoveredBreadcrumbId === anc.id ? 'rgba(25, 118, 210, 0.12)' : 'transparent'
+                                }}
+                            >
+                                {anc.name}
+                            </Link>
+                        ))}
                         {currentFolder && (
-                            <Typography color="text.primary" sx={{ fontSize: '1.25rem', fontWeight: 700 }}>
+                            <Typography color="text.primary" sx={{ fontSize: '1.25rem', fontWeight: 700, px: 1, py: 0.5 }}>
                                 {currentFolder.name}
                             </Typography>
                         )}
@@ -355,6 +420,36 @@ export default function Dashboard() {
             </Box>
             
             <Box sx={{ flex: 1, overflow: 'auto' }}>
+                {currentFolder && (
+                    <Box
+                        onDragOver={(e) => {
+                            e.preventDefault();
+                            if (!isMoveUpDragOver) setIsMoveUpDragOver(true);
+                        }}
+                        onDragLeave={(e) => {
+                            e.preventDefault();
+                            setIsMoveUpDragOver(false);
+                        }}
+                        onDrop={(e) => handleItemDrop(currentFolder.parent_id || null, e)}
+                        sx={{
+                            p: 1.25,
+                            mb: 2,
+                            borderRadius: 2,
+                            border: isMoveUpDragOver ? '2px dashed #1976d2' : '1px dashed #E0E0E0',
+                            bgcolor: isMoveUpDragOver ? 'rgba(25, 118, 210, 0.08)' : '#FAF9F6',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 1,
+                            transition: 'all 0.2s'
+                        }}
+                    >
+                        <DriveFileMoveIcon color={isMoveUpDragOver ? 'primary' : 'action'} fontSize="small" />
+                        <Typography variant="body2" color={isMoveUpDragOver ? 'primary.main' : 'text.secondary'} fontWeight={500}>
+                            Drop items here to move out to {currentFolder.parent_id ? (ancestors[ancestors.length - 1]?.name || 'parent folder') : 'My Drive (Home)'}
+                        </Typography>
+                    </Box>
+                )}
                 <FileGrid 
                     folders={paginatedFolders} 
                     files={paginatedFiles} 

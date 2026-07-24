@@ -51,15 +51,26 @@ class FileRepository {
     }
 
     async update(id, userId, originalName, folderId) {
-        const result = await db.query(
-            `UPDATE files 
-             SET original_name = COALESCE($1, original_name), 
-                 folder_id = COALESCE($2, folder_id),
-                 updated_at = CURRENT_TIMESTAMP
-             WHERE id = $3 AND user_id = $4 AND is_deleted = false
-             RETURNING *`,
-            [originalName, folderId, id, userId]
-        );
+        let query = `UPDATE files SET updated_at = CURRENT_TIMESTAMP`;
+        const params = [];
+        let paramIdx = 1;
+
+        if (originalName !== undefined && originalName !== null) {
+            query += `, original_name = $${paramIdx}`;
+            params.push(originalName);
+            paramIdx++;
+        }
+
+        if (folderId !== undefined) {
+            query += `, folder_id = $${paramIdx}`;
+            params.push(folderId);
+            paramIdx++;
+        }
+
+        query += ` WHERE id = $${paramIdx} AND user_id = $${paramIdx + 1} AND is_deleted = false RETURNING *`;
+        params.push(id, userId);
+
+        const result = await db.query(query, params);
         return result.rows[0];
     }
 

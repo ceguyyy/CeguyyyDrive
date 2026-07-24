@@ -4,6 +4,7 @@ import { useAuthStore } from '../../store/authStore';
 import CreateFolderModal from '../modals/CreateFolderModal';
 import ProfileModal from '../modals/ProfileModal';
 import { useUpload } from '../../hooks/useUpload';
+import { useItemActions } from '../../hooks/useItemActions';
 import { 
     Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, 
     Button, Box, Typography, Divider, Menu, MenuItem, Avatar, LinearProgress
@@ -27,6 +28,7 @@ export default function Sidebar() {
     const [anchorEl, setAnchorEl] = useState(null);
     const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+    const [isMyDriveDragOver, setIsMyDriveDragOver] = useState(false);
     
     const fileInputRef = useRef(null);
     const location = useLocation();
@@ -34,6 +36,7 @@ export default function Sidebar() {
     const currentFolderId = folderMatch ? folderMatch[1] : 'root';
     
     const uploadMutation = useUpload(currentFolderId);
+    const { moveFile, moveFolder } = useItemActions(currentFolderId);
 
     const handleMenuOpen = (event) => setAnchorEl(event.currentTarget);
     const handleMenuClose = () => setAnchorEl(null);
@@ -155,41 +158,75 @@ export default function Sidebar() {
                 </Box>
                 
                 <List sx={{ flex: 1, pt: 0, px: 2 }}>
-                    {navItems.map((item) => (
-                        <ListItem key={item.name} disablePadding sx={{ mb: 0.25 }}>
-                            <ListItemButton 
-                                component={NavLink} 
-                                to={item.path}
-                                sx={{ 
-                                    py: 0.5, px: 1.5,
-                                    '&.active': {
-                                        backgroundColor: 'action.selected',
-                                    },
-                                    '& .MuiListItemIcon-root': { 
-                                        minWidth: 32,
-                                        color: 'text.secondary' 
-                                    },
-                                    '&.active .MuiListItemIcon-root': { 
-                                        color: 'text.primary' 
-                                    },
-                                    '& .MuiListItemText-primary': { 
-                                        fontSize: '0.875rem',
-                                        fontWeight: 500,
-                                        color: 'text.secondary'
-                                    },
-                                    '&.active .MuiListItemText-primary': { 
-                                        fontWeight: 600,
-                                        color: 'text.primary'
-                                    }
-                                }}
-                            >
-                                <ListItemIcon>
-                                    {item.icon}
-                                </ListItemIcon>
-                                <ListItemText primary={item.name} />
-                            </ListItemButton>
-                        </ListItem>
-                    ))}
+                    {navItems.map((item) => {
+                        const isMyDrive = item.path === '/drive';
+                        return (
+                            <ListItem key={item.name} disablePadding sx={{ mb: 0.25 }}>
+                                <ListItemButton 
+                                    component={NavLink} 
+                                    to={item.path}
+                                    onDragOver={(e) => {
+                                        if (isMyDrive) {
+                                            e.preventDefault();
+                                            if (!isMyDriveDragOver) setIsMyDriveDragOver(true);
+                                        }
+                                    }}
+                                    onDragLeave={(e) => {
+                                        if (isMyDrive) {
+                                            e.preventDefault();
+                                            setIsMyDriveDragOver(false);
+                                        }
+                                    }}
+                                    onDrop={(e) => {
+                                        if (!isMyDrive) return;
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setIsMyDriveDragOver(false);
+                                        try {
+                                            const dataString = e.dataTransfer.getData('application/json');
+                                            if (!dataString) return;
+                                            const data = JSON.parse(dataString);
+                                            if (data.type === 'file') {
+                                                moveFile.mutate({ id: data.id, targetFolderId: null });
+                                            } else if (data.type === 'folder') {
+                                                moveFolder.mutate({ id: data.id, targetFolderId: null });
+                                            }
+                                        } catch (err) {}
+                                    }}
+                                    sx={{ 
+                                        py: 0.5, px: 1.5,
+                                        borderRadius: 1,
+                                        border: isMyDrive && isMyDriveDragOver ? '2px dashed #1976d2' : '1px solid transparent',
+                                        backgroundColor: isMyDrive && isMyDriveDragOver ? 'rgba(25, 118, 210, 0.12)' : undefined,
+                                        '&.active': {
+                                            backgroundColor: isMyDrive && isMyDriveDragOver ? 'rgba(25, 118, 210, 0.15)' : 'action.selected',
+                                        },
+                                        '& .MuiListItemIcon-root': { 
+                                            minWidth: 32,
+                                            color: 'text.secondary' 
+                                        },
+                                        '&.active .MuiListItemIcon-root': { 
+                                            color: 'text.primary' 
+                                        },
+                                        '& .MuiListItemText-primary': { 
+                                            fontSize: '0.875rem',
+                                            fontWeight: 500,
+                                            color: 'text.secondary'
+                                        },
+                                        '&.active .MuiListItemText-primary': { 
+                                            fontWeight: 600,
+                                            color: 'text.primary'
+                                        }
+                                    }}
+                                >
+                                    <ListItemIcon>
+                                        {item.icon}
+                                    </ListItemIcon>
+                                    <ListItemText primary={item.name} />
+                                </ListItemButton>
+                            </ListItem>
+                        );
+                    })}
                 </List>
 
                 {/* Storage and Profile Section */}

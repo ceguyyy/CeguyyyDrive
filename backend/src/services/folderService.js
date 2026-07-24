@@ -39,6 +39,20 @@ class FolderService {
         return folder;
     }
 
+    async getAncestors(folderId, userId) {
+        const ancestors = [];
+        let currentId = folderId;
+        while (currentId) {
+            const folder = await folderRepository.findByIdAndUser(currentId, userId);
+            if (!folder || !folder.parent_id) break;
+            const parentFolder = await folderRepository.findByIdAndUser(folder.parent_id, userId);
+            if (!parentFolder) break;
+            ancestors.unshift({ id: parentFolder.id, name: parentFolder.name });
+            currentId = parentFolder.id;
+        }
+        return ancestors;
+    }
+
     async updateFolder(id, name, parentId, userId) {
         const folder = await folderRepository.findByIdAndUser(id, userId);
         if (!folder) {

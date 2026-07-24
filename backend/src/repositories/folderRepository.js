@@ -51,14 +51,30 @@ class FolderRepository {
     }
 
     async update(id, name, parentId, userId) {
-        const result = await db.query(
-            `UPDATE folders 
-             SET name = COALESCE($1, name), 
-                 parent_id = COALESCE($2, parent_id)
-             WHERE id = $3 AND user_id = $4 AND is_deleted = false
-             RETURNING *`,
-            [name, parentId, id, userId]
-        );
+        let query = `UPDATE folders SET `;
+        const setClauses = [];
+        const params = [];
+        let paramIdx = 1;
+
+        if (name !== undefined && name !== null) {
+            setClauses.push(`name = $${paramIdx}`);
+            params.push(name);
+            paramIdx++;
+        }
+
+        if (parentId !== undefined) {
+            setClauses.push(`parent_id = $${paramIdx}`);
+            params.push(parentId);
+            paramIdx++;
+        }
+
+        if (setClauses.length === 0) return await this.findByIdAndUser(id, userId);
+
+        query += setClauses.join(', ');
+        query += ` WHERE id = $${paramIdx} AND user_id = $${paramIdx + 1} AND is_deleted = false RETURNING *`;
+        params.push(id, userId);
+
+        const result = await db.query(query, params);
         return result.rows[0];
     }
 

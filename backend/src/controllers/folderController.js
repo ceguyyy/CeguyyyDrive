@@ -51,8 +51,10 @@ exports.getFolder = async (req, res, next) => {
         
         // Fetch folder metadata if not root
         let folder = null;
+        let ancestors = [];
         if (actualFolderId) {
             folder = await folderService.getFolder(actualFolderId, req.user.id);
+            ancestors = await folderService.getAncestors(actualFolderId, req.user.id);
         }
         
         // Import fileService locally if not imported at top
@@ -66,6 +68,7 @@ exports.getFolder = async (req, res, next) => {
             status: 'success',
             data: { 
                 folder,
+                ancestors,
                 subfolders,
                 files
             }
