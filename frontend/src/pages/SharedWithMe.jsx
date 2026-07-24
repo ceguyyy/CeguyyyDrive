@@ -16,10 +16,12 @@ import {
     Send as SendIcon,
     MoreVert as MoreVertIcon,
     Refresh as RefreshIcon,
-    AccessTime as TimeIcon
+    AccessTime as TimeIcon,
+    EditCalendar as EditCalendarIcon
 } from '@mui/icons-material';
 import api from '../services/api';
 import FilePreviewModal from '../components/modals/FilePreviewModal';
+import EditExpirationModal from '../components/modals/EditExpirationModal';
 
 function formatBytes(bytes) {
     if (!bytes) return '0 B';
@@ -29,7 +31,7 @@ function formatBytes(bytes) {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
-function SharedCardActionsMenu({ onPreview, onDownload, onCopyToDrive, onCopyLink, onDelete, deleteText = 'Remove', isFile = false }) {
+function SharedCardActionsMenu({ onPreview, onDownload, onCopyToDrive, onCopyLink, onEditExpiration, onDelete, deleteText = 'Remove', isFile = false }) {
     const [anchorEl, setAnchorEl] = useState(null);
     const open = Boolean(anchorEl);
 
@@ -72,6 +74,12 @@ function SharedCardActionsMenu({ onPreview, onDownload, onCopyToDrive, onCopyLin
                         <ListItemText>Copy Link</ListItemText>
                     </MenuItem>
                 )}
+                {onEditExpiration && (
+                    <MenuItem onClick={() => { handleClose(); onEditExpiration(); }}>
+                        <ListItemIcon><TimeIcon fontSize="small" /></ListItemIcon>
+                        <ListItemText>Set Expiration</ListItemText>
+                    </MenuItem>
+                )}
                 {onDelete && (
                     <MenuItem onClick={() => { handleClose(); onDelete(); }} sx={{ color: 'error.main' }}>
                         <ListItemIcon><DeleteIcon fontSize="small" color="error" /></ListItemIcon>
@@ -86,6 +94,7 @@ function SharedCardActionsMenu({ onPreview, onDownload, onCopyToDrive, onCopyLin
 export default function SharedWithMe() {
     const [tab, setTab] = useState(0); // 0: Shared with me, 1: Shared by me
     const [previewFile, setPreviewFile] = useState(null);
+    const [editingShare, setEditingShare] = useState(null);
     const [copyingId, setCopyingId] = useState(null);
     const [copiedShareId, setCopiedShareId] = useState(null);
     const queryClient = useQueryClient();
@@ -451,6 +460,16 @@ export default function SharedWithMe() {
                                                     <Button 
                                                         variant="outlined" 
                                                         size="small"
+                                                        color="info"
+                                                        startIcon={<TimeIcon />}
+                                                        onClick={() => setEditingShare(share)}
+                                                    >
+                                                        Set Expiration
+                                                    </Button>
+
+                                                    <Button 
+                                                        variant="outlined" 
+                                                        size="small"
                                                         color="error"
                                                         startIcon={<DeleteIcon />}
                                                         onClick={() => revokeSentShareMutation.mutate(share.id)}
@@ -464,6 +483,7 @@ export default function SharedWithMe() {
                                                     <SharedCardActionsMenu 
                                                         isFile={false}
                                                         onCopyLink={() => handleCopyShareLink(share)}
+                                                        onEditExpiration={() => setEditingShare(share)}
                                                         onDelete={() => revokeSentShareMutation.mutate(share.id)}
                                                         deleteText="Revoke Access"
                                                     />
@@ -483,6 +503,15 @@ export default function SharedWithMe() {
                     isOpen={!!previewFile}
                     onClose={() => setPreviewFile(null)}
                     file={previewFile}
+                />
+            )}
+
+            {editingShare && (
+                <EditExpirationModal
+                    isOpen={!!editingShare}
+                    onClose={() => setEditingShare(null)}
+                    share={editingShare}
+                    onSuccess={() => queryClient.invalidateQueries({ queryKey: ['shared-by-me'] })}
                 />
             )}
         </Box>

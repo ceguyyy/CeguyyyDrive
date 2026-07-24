@@ -105,3 +105,22 @@ exports.removeReceivedShare = async (req, res, next) => {
         next(err);
     }
 };
+
+const updateShareSchema = z.object({
+    expiresAt: z.string().datetime().nullable().optional()
+});
+
+exports.updateShareExpiration = async (req, res, next) => {
+    try {
+        const id = req.params.id;
+        const { expiresAt } = updateShareSchema.parse(req.body);
+        const share = await shareService.updateShareExpiration(id, req.user.id, expiresAt || null);
+        
+        res.status(200).json({
+            status: 'success',
+            data: { share }
+        });
+    } catch (err) {
+        next(err);
+    }
+};

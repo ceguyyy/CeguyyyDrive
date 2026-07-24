@@ -164,6 +164,14 @@ class ShareService {
         }
         return deleted;
     }
+
+    async updateShareExpiration(id, userId, expiresAt) {
+        const updated = await shareRepository.updateExpiresAt(id, userId, expiresAt);
+        if (!updated) {
+            throw new AppError('Share not found', 404);
+        }
+        return updated;
+    }
 }
 
 module.exports = new ShareService();

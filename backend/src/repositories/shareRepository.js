@@ -88,6 +88,14 @@ class ShareRepository {
         );
         return result.rows[0];
     }
+
+    async updateExpiresAt(id, userId, expiresAt) {
+        const result = await db.query(
+            `UPDATE shares SET expires_at = $1 WHERE id = $2 AND shared_by = $3 RETURNING *`,
+            [expiresAt, id, userId]
+        );
+        return result.rows[0];
+    }
 }
 
 module.exports = new ShareRepository();
