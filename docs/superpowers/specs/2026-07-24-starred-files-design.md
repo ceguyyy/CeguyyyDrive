@@ -22,26 +22,37 @@ navigate the folder tree every time to find frequently-used documents.
 
 ## Data Model
 
-**`files`** (migration adds):
-- `is_starred BOOLEAN NOT NULL DEFAULT false`
+No new column, no new table. `favorites` already exists in the schema
+(`001_initial_schema.sql`) with exactly the right shape — `user_id`,
+`file_id`, `folder_id` (both nullable, `CHECK` requires at least one),
+`created_at` — but is not referenced anywhere in the codebase yet. Starring a
+file is inserting/deleting a row here (`file_id` set, `folder_id` left null,
+per this feature's files-only scope).
 
-No new tables — a single boolean is sufficient for a personal, per-user file
-(files already belong to exactly one `user_id`).
+One migration is still needed: a partial unique index so toggling is a clean
+upsert/delete instead of accumulating duplicate rows:
+
+```sql
+CREATE UNIQUE INDEX idx_favorites_user_file_unique ON favorites(user_id, file_id) WHERE file_id IS NOT NULL;
+```
 
 ## Backend
 
 New endpoints in the existing personal-Drive file module (`fileController.js` /
-`fileService.js` / `fileRepository.js` / `file.routes.js`) — this is
+`fileService.js` / a new `favoriteRepository.js` / `file.routes.js`) — this is
 personal-Drive-only, so it belongs alongside the existing file endpoints, not
 in a new module:
 
 | Method | Path | Purpose |
 |---|---|---|
-| PATCH | `/files/:id/star` | Toggle `is_starred` for a file owned by the caller |
-| GET | `/files/starred` | List every starred, non-deleted file owned by the caller, ordered by `updated_at DESC` |
+| PATCH | `/files/:id/star` | Toggle: insert a `favorites` row if none exists for `(user_id, file_id)`, delete it if one does |
+| GET | `/files/starred` | Join `favorites` → `files` for the caller, non-deleted files only, ordered by `favorites.created_at DESC` |
 
 Both scoped by `user_id = req.user.id`, matching every other personal-file
-query in this codebase.
+query in this codebase. The file-listing queries used by My Drive
+(`fileRepository.findByFolderAndUser`) also gain a `LEFT JOIN favorites` so
+`FileCard` knows whether to render its star filled or outline, the same
+pattern already used for the approval-status badge added earlier.
 
 ## Frontend
 
