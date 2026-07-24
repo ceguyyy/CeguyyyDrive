@@ -11,21 +11,44 @@ import "@cyntler/react-doc-viewer/dist/index.css";
 
 export default function FilePreviewModal({ isOpen, onClose, file }) {
     const [previewUrl, setPreviewUrl] = useState(null);
+    const [rawDownloadUrl, setRawDownloadUrl] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
     const [isPromptOpen, setIsPromptOpen] = useState(false);
 
     useEffect(() => {
         let isMounted = true;
+        let activeBlobUrl = null;
+
         if (isOpen && file) {
             setIsLoading(true);
             setError(null);
             
-            // Allow file.file_id or file.id for shared files
             const targetId = file.id || file.file_id;
             api.get(`/storage/download-url/${targetId}`)
-                .then(res => {
-                    if (isMounted) setPreviewUrl(res.data.data.downloadUrl);
+                .then(async res => {
+                    if (!isMounted) return;
+                    const url = res.data.data.downloadUrl;
+                    setRawDownloadUrl(url);
+
+                    const mime = file.mime_type || '';
+                    const fileName = (file.original_name || file.name || '').toLowerCase();
+                    const isPdf = mime === 'application/pdf' || mime.includes('pdf') || fileName.endsWith('.pdf');
+
+                    if (isPdf) {
+                        try {
+                            // Fetch as blob to guarantee 100% inline PDF preview without browser auto-downloading
+                            const response = await fetch(url);
+                            const blob = await response.blob();
+                            const pdfBlob = new Blob([blob], { type: 'application/pdf' });
+                            activeBlobUrl = window.URL.createObjectURL(pdfBlob);
+                            if (isMounted) setPreviewUrl(activeBlobUrl);
+                        } catch (err) {
+                            if (isMounted) setPreviewUrl(url);
+                        }
+                    } else {
+                        setPreviewUrl(url);
+                    }
                 })
                 .catch(err => {
                     if (isMounted) setError(err.response?.data?.message || 'Failed to load preview');
@@ -34,7 +57,13 @@ export default function FilePreviewModal({ isOpen, onClose, file }) {
                     if (isMounted) setIsLoading(false);
                 });
         }
-        return () => { isMounted = false; setPreviewUrl(null); };
+
+        return () => { 
+            isMounted = false; 
+            if (activeBlobUrl) window.URL.revokeObjectURL(activeBlobUrl);
+            setPreviewUrl(null); 
+            setRawDownloadUrl(null);
+        };
     }, [isOpen, file]);
 
     if (!isOpen || !file) return null;
@@ -54,8 +83,9 @@ export default function FilePreviewModal({ isOpen, onClose, file }) {
 
     const triggerDownload = async (newName) => {
         setIsPromptOpen(false);
+        const targetUrl = rawDownloadUrl || previewUrl;
         try {
-            const response = await fetch(previewUrl);
+            const response = await fetch(targetUrl);
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -67,8 +97,7 @@ export default function FilePreviewModal({ isOpen, onClose, file }) {
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
         } catch (err) {
-            alert("Failed to download file. Opening in new tab instead.");
-            window.open(previewUrl, '_blank');
+            window.open(targetUrl, '_blank');
         }
     };
 
@@ -84,12 +113,12 @@ export default function FilePreviewModal({ isOpen, onClose, file }) {
                     {file.original_name || file.name}
                 </Typography>
                 <Box sx={{ display: 'flex', gap: 1 }}>
-                    {previewUrl && (
+                    {(rawDownloadUrl || previewUrl) && (
                         <Tooltip title="Open in new tab">
                             <IconButton
                                 aria-label="open in new tab"
                                 component="a"
-                                href={previewUrl}
+                                href={rawDownloadUrl || previewUrl}
                                 target="_blank"
                                 rel="noreferrer"
                                 sx={{ color: 'grey.700', '&:hover': { color: 'black' } }}
@@ -103,7 +132,7 @@ export default function FilePreviewModal({ isOpen, onClose, file }) {
                             <IconButton
                                 aria-label="download"
                                 onClick={() => setIsPromptOpen(true)}
-                                disabled={!previewUrl}
+                                disabled={!previewUrl && !rawDownloadUrl}
                                 sx={{ color: 'grey.700', '&:hover': { color: 'black' } }}
                             >
                                 <DownloadIcon />
@@ -126,19 +155,19 @@ export default function FilePreviewModal({ isOpen, onClose, file }) {
                     {isLoading && <CircularProgress color="primary" />}
                     {error && <Alert severity="error">{error}</Alert>}
                     
-                    {previewUrl && isImage && (
+                    {!isLoading && previewUrl && isImage && (
                         <Box component="img" src={previewUrl} alt={file.name} sx={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
                     )}
 
-                    {previewUrl && isVideo && (
+                    {!isLoading && previewUrl && isVideo && (
                         <Box component="video" controls src={previewUrl} sx={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
                     )}
 
-                    {previewUrl && isAudio && (
+                    {!isLoading && previewUrl && isAudio && (
                         <Box component="audio" controls src={previewUrl} sx={{ width: '100%', maxWidth: '400px', mx: 'auto' }} />
                     )}
                     
-                    {previewUrl && isPdf && (
+                    {!isLoading && previewUrl && isPdf && (
                         <Box sx={{ width: '100%', height: '100%', bgcolor: '#525659' }}>
                             <object
                                 data={previewUrl}
@@ -152,9 +181,9 @@ export default function FilePreviewModal({ isOpen, onClose, file }) {
                                     style={{ width: '100%', height: '100%', border: 'none' }} 
                                     title={file.name}
                                 >
-                                    <p sx={{ color: 'white', p: 2 }}>
-                                        Your browser does not support PDF inline viewing.{' '}
-                                        <a href={previewUrl} target="_blank" rel="noreferrer" style={{ color: '#90caf9' }}>
+                                    <p style={{ color: 'white', padding: '16px' }}>
+                                        Your browser does not support inline PDF rendering.{' '}
+                                        <a href={rawDownloadUrl || previewUrl} target="_blank" rel="noreferrer" style={{ color: '#90caf9' }}>
                                             Click here to open PDF directly
                                         </a>.
                                     </p>
@@ -163,7 +192,7 @@ export default function FilePreviewModal({ isOpen, onClose, file }) {
                         </Box>
                     )}
 
-                    {previewUrl && isDocViewerSupported && !isImage && !isPdf && (
+                    {!isLoading && previewUrl && isDocViewerSupported && !isImage && !isPdf && (
                         <Box sx={{ 
                             position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, bgcolor: 'common.white', overflow: 'hidden',
                             '& #react-doc-viewer': { height: '100% !important', width: '100% !important', display: 'flex', flexDirection: 'column' },
@@ -187,7 +216,7 @@ export default function FilePreviewModal({ isOpen, onClose, file }) {
                         </Box>
                     )}
                     
-                    {previewUrl && !isImage && !isPdf && !isVideo && !isAudio && !isDocViewerSupported && (
+                    {!isLoading && previewUrl && !isImage && !isPdf && !isVideo && !isAudio && !isDocViewerSupported && (
                         <Box sx={{ textAlign: 'center', color: 'text.primary' }}>
                             <Typography variant="h6" gutterBottom>
                                 Preview not available for this file type

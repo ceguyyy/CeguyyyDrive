@@ -38,15 +38,24 @@ class CosService {
         });
     }
 
-    getPresignedDownloadUrl(objectKey) {
+    getPresignedDownloadUrl(objectKey, inline = true, mimeType = null) {
         return new Promise((resolve, reject) => {
+            const queryParams = {};
+            if (inline) {
+                queryParams['response-content-disposition'] = 'inline';
+            }
+            if (mimeType) {
+                queryParams['response-content-type'] = mimeType;
+            }
+
             this.cos.getObjectUrl({
                 Bucket: this.bucket,
                 Region: this.region,
                 Key: objectKey,
                 Method: 'GET',
                 Sign: true,
-                Expires: 3600 // 1 hour
+                Expires: 3600, // 1 hour
+                Query: Object.keys(queryParams).length > 0 ? queryParams : undefined
             }, (err, data) => {
                 if (err) {
                     console.error('COS Download Sign Error:', err);

@@ -48,8 +48,8 @@ exports.generateDownloadUrl = async (req, res, next) => {
         // 1. Validate the user owns this file or has received access via share
         const file = await fileService.getAccessibleFile(fileId, req.user.id);
 
-        // 2. Generate the presigned URL using the storage_key
-        const downloadUrl = await cosService.getPresignedDownloadUrl(file.storage_key);
+        // 2. Generate the presigned URL using the storage_key with inline disposition
+        const downloadUrl = await cosService.getPresignedDownloadUrl(file.storage_key, true, file.mime_type);
 
         res.status(200).json({
             status: 'success',
