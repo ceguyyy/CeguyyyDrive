@@ -18,10 +18,10 @@ class OrganizationRepository {
                 [org.id, ownerId]
             );
 
-            // Add default roles (CEO, Manager, Staff)
+            // Add default roles (Owner, Manager, Staff)
             const ceoRes = await client.query(
                 `INSERT INTO organization_roles (organization_id, name, parent_role_id, canvas_position_x, canvas_position_y, color) 
-                 VALUES ($1, 'CEO', NULL, 250, 50, '#EF4444') RETURNING id`,
+                 VALUES ($1, 'Owner', NULL, 300, 50, '#EF4444') RETURNING id`,
                 [org.id]
             );
             const ceoId = ceoRes.rows[0].id;
@@ -55,7 +55,7 @@ class OrganizationRepository {
                     (SELECT COUNT(*) FROM organization_members WHERE organization_id = o.id AND status = 'accepted') as member_count
              FROM organizations o
              JOIN organization_members om ON o.id = om.organization_id
-             WHERE om.user_id = $1 OR om.email = (SELECT email FROM users WHERE id = $1)
+             WHERE om.user_id = $1 OR LOWER(om.email) = (SELECT LOWER(email) FROM users WHERE id = $1)
              ORDER BY o.created_at DESC`,
             [userId]
         );
@@ -65,6 +65,14 @@ class OrganizationRepository {
     async findOrganizationById(id) {
         const result = await db.query(`SELECT * FROM organizations WHERE id = $1`, [id]);
         return result.rows[0];
+    }
+
+    async countOwnedOrganizations(ownerId) {
+        const result = await db.query(
+            `SELECT COUNT(*)::int AS count FROM organizations WHERE owner_id = $1`,
+            [ownerId]
+        );
+        return result.rows[0].count;
     }
 
     async addMember(orgId, email, roleName = 'Member', targetUserId = null) {
@@ -80,9 +88,9 @@ class OrganizationRepository {
 
     async findMembers(orgId) {
         const result = await db.query(
-            `SELECT om.*, u.full_name, u.avatar_url
+            `SELECT om.*, u.full_name, u.profile_picture as avatar_url
              FROM organization_members om
-             LEFT JOIN users u ON om.user_id = u.id OR om.email = u.email
+             LEFT JOIN users u ON om.user_id = u.id OR LOWER(om.email) = LOWER(u.email)
              WHERE om.organization_id = $1
              ORDER BY om.created_at DESC`,
             [orgId]
@@ -94,9 +102,17 @@ class OrganizationRepository {
         const result = await db.query(
             `UPDATE organization_members 
              SET status = $3, user_id = $2
-             WHERE organization_id = $1 AND (user_id = $2 OR email = (SELECT email FROM users WHERE id = $2))
+             WHERE organization_id = $1 AND (user_id = $2 OR LOWER(email) = (SELECT LOWER(email) FROM users WHERE id = $2))
              RETURNING *`,
             [orgId, userId, status]
+        );
+        return result.rows[0];
+    }
+
+    async removeMember(orgId, memberId) {
+        const result = await db.query(
+            `DELETE FROM organization_members WHERE id = $1 AND organization_id = $2 AND role_name != 'Owner' RETURNING *`,
+            [memberId, orgId]
         );
         return result.rows[0];
     }
@@ -118,10 +134,10 @@ class OrganizationRepository {
             const inserted = [];
             for (const r of roles) {
                 const res = await client.query(
-                    `INSERT INTO organization_roles (id, organization_id, name, parent_role_id, canvas_position_x, canvas_position_y, color)
-                     VALUES (COALESCE($1, uuid_generate_v4()), $2, $3, $4, $5, $6, $7)
+                    `INSERT INTO organization_roles (id, organization_id, name, parent_role_id, canvas_position_x, canvas_position_y, color, storage_limit)
+                     VALUES (COALESCE($1, uuid_generate_v4()), $2, $3, $4, $5, $6, $7, $8)
                      RETURNING *`,
-                    [r.id || null, orgId, r.name, r.parent_role_id || null, r.canvas_position_x || 250, r.canvas_position_y || 100, r.color || '#3B82F6']
+                    [r.id || null, orgId, r.name, r.parent_role_id || null, r.canvas_position_x || 250, r.canvas_position_y || 100, r.color || '#3B82F6', r.storage_limit || null]
                 );
                 inserted.push(res.rows[0]);
             }
@@ -133,6 +149,42 @@ class OrganizationRepository {
         } finally {
             client.release();
         }
+    }
+
+    async transferOwner(orgId, currentOwnerId, newOwnerId) {
+        const client = await db.getClient();
+        try {
+            await client.query('BEGIN');
+            // Update org owner_id
+            await client.query(
+                `UPDATE organizations SET owner_id = $1 WHERE id = $2 AND owner_id = $3`,
+                [newOwnerId, orgId, currentOwnerId]
+            );
+            // Update old owner's membership role
+            await client.query(
+                `UPDATE organization_members SET role_name = 'Manager' WHERE organization_id = $1 AND user_id = $2`,
+                [orgId, currentOwnerId]
+            );
+            // Update new owner's membership role
+            await client.query(
+                `UPDATE organization_members SET role_name = 'Owner' WHERE organization_id = $1 AND user_id = $2`,
+                [orgId, newOwnerId]
+            );
+            await client.query('COMMIT');
+        } catch (err) {
+            await client.query('ROLLBACK');
+            throw err;
+        } finally {
+            client.release();
+        }
+    }
+
+    async deleteOrganization(orgId, ownerId) {
+        const result = await db.query(
+            `DELETE FROM organizations WHERE id = $1 AND owner_id = $2 RETURNING *`,
+            [orgId, ownerId]
+        );
+        return result.rows[0];
     }
 }
 

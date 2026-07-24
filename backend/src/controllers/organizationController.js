@@ -71,3 +71,34 @@ exports.saveRoles = async (req, res, next) => {
         next(err);
     }
 };
+
+exports.deleteOrganization = async (req, res, next) => {
+    try {
+        const { orgId } = req.params;
+        await organizationService.deleteOrganization(orgId, req.user.id);
+        res.status(200).json({ status: 'success', data: null });
+    } catch (err) {
+        next(err);
+    }
+};
+
+exports.removeMember = async (req, res, next) => {
+    try {
+        const { orgId, memberId } = req.params;
+        await organizationService.removeMember(orgId, memberId, req.user.id);
+        res.status(200).json({ status: 'success', data: null });
+    } catch (err) {
+        next(err);
+    }
+};
+
+exports.transferOwner = async (req, res, next) => {
+    try {
+        const { orgId } = req.params;
+        const { newOwnerId } = req.body;
+        await organizationService.transferOwner(orgId, req.user.id, newOwnerId);
+        res.status(200).json({ status: 'success', data: null });
+    } catch (err) {
+        next(err);
+    }
+};
