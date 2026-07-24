@@ -4,11 +4,12 @@ import {
     Controls, 
     Background, 
     Handle,
-    Position
+    Position,
+    ReactFlowProvider
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { 
-    Box, Typography, Paper, Avatar, Chip, Stack 
+    Box, Typography, Paper, Avatar, Chip 
 } from '@mui/material';
 import { 
     CheckCircle as CheckIcon, 
@@ -175,15 +176,17 @@ export default function ApprovalFlowVisualizer({ approvalData }) {
 
     return (
         <Box sx={{ height: '350px', width: '100%', bgcolor: '#F8FAFC', borderRadius: 3, border: '1px solid #E2E8F0', overflow: 'hidden' }}>
-            <ReactFlow
-                nodes={nodes}
-                edges={edges}
-                nodeTypes={nodeTypes}
-                fitView
-            >
-                <Background color="#CBD5E1" gap={16} />
-                <Controls />
-            </ReactFlow>
+            <ReactFlowProvider>
+                <ReactFlow
+                    nodes={nodes}
+                    edges={edges}
+                    nodeTypes={nodeTypes}
+                    fitView
+                >
+                    <Background color="#CBD5E1" gap={16} />
+                    <Controls />
+                </ReactFlow>
+            </ReactFlowProvider>
         </Box>
     );
 }

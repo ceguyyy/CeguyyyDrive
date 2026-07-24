@@ -4,7 +4,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
     AppBar, Toolbar, InputBase, Avatar, Box, IconButton, 
-    Badge, Popover, Typography, List, ListItem, LinearProgress,
+    Badge, Popover, Typography, List, ListItem, ListItemButton, LinearProgress,
     Tabs, Tab, Button, Divider 
 } from '@mui/material';
 import { 
@@ -182,9 +182,8 @@ export default function Header() {
                                     ) : (
                                         <List disablePadding>
                                             {notifications.map(n => (
-                                                <ListItem
+                                                <ListItemButton
                                                     key={n.id}
-                                                    button
                                                     onClick={() => handleNotificationItemClick(n)}
                                                     sx={{ 
                                                         mb: 1, borderRadius: 1.5, 
@@ -205,7 +204,7 @@ export default function Header() {
                                                             {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                         </Typography>
                                                     </Box>
-                                                </ListItem>
+                                                </ListItemButton>
                                             ))}
                                         </List>
                                     )}

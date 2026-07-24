@@ -7,7 +7,8 @@ import {
     applyEdgeChanges, 
     addEdge,
     Handle,
-    Position
+    Position,
+    ReactFlowProvider
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { 
@@ -204,19 +205,21 @@ export default function RoleHierarchyCanvas({ orgId }) {
 
             {message && <Alert severity={message.includes('successfully') ? 'success' : 'error'} sx={{ m: 1 }}>{message}</Alert>}
 
-            <Box sx={{ flexGrow: 1, width: '100%' }}>
-                <ReactFlow
-                    nodes={nodes}
-                    edges={edges}
-                    nodeTypes={nodeTypes}
-                    onNodesChange={onNodesChange}
-                    onEdgesChange={onEdgesChange}
-                    onConnect={onConnect}
-                    fitView
-                >
-                    <Background color="#CBD5E1" gap={16} />
-                    <Controls />
-                </ReactFlow>
+            <Box sx={{ flexGrow: 1, width: '100%', height: '100%' }}>
+                <ReactFlowProvider>
+                    <ReactFlow
+                        nodes={nodes}
+                        edges={edges}
+                        nodeTypes={nodeTypes}
+                        onNodesChange={onNodesChange}
+                        onEdgesChange={onEdgesChange}
+                        onConnect={onConnect}
+                        fitView
+                    >
+                        <Background color="#CBD5E1" gap={16} />
+                        <Controls />
+                    </ReactFlow>
+                </ReactFlowProvider>
             </Box>
         </Box>
     );
