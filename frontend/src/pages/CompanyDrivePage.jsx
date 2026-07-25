@@ -168,7 +168,7 @@ export default function CompanyDrivePage() {
     }, [files, sortBy, sortOrder]);
 
     return (
-        <Box 
+        <Box
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
@@ -218,9 +218,7 @@ export default function CompanyDrivePage() {
 
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, bgcolor: 'background.paper', p: 0.5, borderRadius: 1, border: '1px solid #E5E7EB', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
-                        <Typography variant="caption" color="text.secondary" sx={{ px: 1, fontWeight: 700, display: { xs: 'none', sm: 'block' }, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                            View UI:
-                        </Typography>
+
                         <ToggleButtonGroup
                             value={viewMode}
                             exclusive
@@ -332,8 +330,8 @@ export default function CompanyDrivePage() {
                     </Typography>
                     <FileGrid viewMode={viewMode}>
                         {sortedFiles.map(file => (
-                            <FileCard 
-                                key={file.id} 
+                            <FileCard
+                                key={file.id}
                                 file={file}
                                 customRenameFile={renameFile}
                                 customDeleteFile={deleteFile}
