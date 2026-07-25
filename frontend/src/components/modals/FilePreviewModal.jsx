@@ -109,9 +109,18 @@ export default function FilePreviewModal({ isOpen, onClose, file }) {
             fullScreen 
             open={isOpen} 
             onClose={onClose} 
-            sx={{ '& .MuiDialog-paper': { bgcolor: 'common.white' } }}
+            sx={{ 
+                '& .MuiDialog-paper': { 
+                    bgcolor: 'common.white',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    height: '100vh',
+                    maxHeight: '100vh',
+                    overflow: 'hidden'
+                } 
+            }}
         >
-            <DialogTitle sx={{ m: 0, p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'text.primary', bgcolor: 'grey.100' }}>
+            <DialogTitle sx={{ m: 0, p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'text.primary', bgcolor: 'grey.100', flexShrink: 0 }}>
                 <Typography variant="h6" noWrap sx={{ flex: 1, color: 'text.primary' }}>
                     {file.original_name || file.name}
                 </Typography>
@@ -153,8 +162,8 @@ export default function FilePreviewModal({ isOpen, onClose, file }) {
                     </Tooltip>
                 </Box>
             </DialogTitle>
-            <DialogContent sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', p: isDocViewerSupported || isPdf ? 0 : 4, height: '100%', width: '100%', bgcolor: 'common.white', overflow: 'hidden' }}>
-                <Box sx={{ width: '100%', height: '100%', display: 'flex', flex: 1, flexDirection: 'column', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
+            <DialogContent sx={{ display: 'flex', flexDirection: 'column', flex: 1, p: 0, height: 'calc(100vh - 64px)', width: '100%', bgcolor: 'common.white', overflow: 'hidden', position: 'relative' }}>
+                <Box sx={{ width: '100%', height: '100%', display: 'flex', flex: 1, flexDirection: 'column', justifyContent: 'center', alignItems: 'center', position: 'relative', overflow: 'hidden' }}>
                     {isLoading && <CircularProgress color="primary" />}
                     {error && <Alert severity="error">{error}</Alert>}
                     
@@ -195,23 +204,19 @@ export default function FilePreviewModal({ isOpen, onClose, file }) {
                         </Box>
                     )}
 
-                    {!isLoading && previewUrl && isOfficeDoc && !isImage && !isPdf && (
-                        <Box sx={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', flex: 1, bgcolor: '#ffffff' }}>
-                            <iframe 
-                                src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(previewUrl)}`}
-                                title={file.original_name || file.name}
-                                width="100%"
-                                height="100%"
-                                style={{ border: 'none', flex: 1, minHeight: '100%' }}
-                            />
-                        </Box>
-                    )}
-
-                    {!isLoading && previewUrl && isDocViewerSupported && !isOfficeDoc && !isImage && !isPdf && (
+                    {!isLoading && previewUrl && isDocViewerSupported && !isImage && !isPdf && (
                         <Box sx={{ 
-                            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', bgcolor: 'common.white', overflow: 'hidden',
-                            '& #react-doc-viewer, & #react-doc-viewer *, & #ms-doc-renderer, & #ms-doc-iframe, & iframe': { 
-                                height: '100% !important', width: '100% !important', minHeight: '100% !important', border: 'none !important', flex: '1 1 auto !important', display: 'flex !important', flexDirection: 'column !important' 
+                            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', bgcolor: '#ffffff', overflow: 'hidden',
+                            display: 'flex', flexDirection: 'column', flex: 1,
+                            '& #react-doc-viewer, & #react-doc-viewer *, & #msdoc-renderer, & #msdoc-iframe, & #ms-doc-renderer, & #ms-doc-iframe, & [id*="renderer"], & [id*="doc"], & iframe': { 
+                                height: '100% !important', 
+                                width: '100% !important', 
+                                minHeight: '100% !important', 
+                                border: 'none !important', 
+                                flex: '1 1 auto !important', 
+                                display: 'flex !important', 
+                                flexDirection: 'column !important',
+                                boxSizing: 'border-box !important'
                             }
                         }}>
                             <DocViewer 
