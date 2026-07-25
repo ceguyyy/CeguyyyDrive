@@ -11,16 +11,34 @@ const routes = require('./routes');
 const app = express();
 
 // 1. GLOBAL MIDDLEWARES
+// Enable trust proxy for Nginx reverse proxy / load balancer
+app.set('trust proxy', 1);
+
 // Set security HTTP headers
 app.use(helmet());
 
 // Enable CORS
-app.use(cors({
+const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173')
+    .split(',')
+    .map(o => o.trim())
+    .filter(Boolean);
+
+const corsOptions = {
     origin: function (origin, callback) {
-        callback(null, true);
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+            return callback(null, true);
+        }
+        return callback(null, true);
     },
-    credentials: true
-}));
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
+
 
 // Limit requests from same API
 const limiter = rateLimit({

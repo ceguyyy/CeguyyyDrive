@@ -38,9 +38,50 @@ The Backend is containerized.
 2. `npm run build` is executed.
 3. Output directory (`dist`) is deployed to the edge.
 
-## 4. Reverse Proxy / Web Server
-- For Docker in Render, the container exposes port 8080. Render's internal Nginx handles HTTPS termination and load balancing.
-- For local production simulation, a custom `nginx.conf` will be provided for `docker-compose`.
+## 4. Reverse Proxy, Load Balancing & Anti-DDoS Architecture
+
+For production and local container deployment, Nginx serves as the primary ingress Gateway:
+
+```mermaid
+flowchart TD
+    Client[Clients / Web Traffic] -->|HTTP/HTTPS Port 80/443| Nginx[Nginx Reverse Proxy & Load Balancer]
+    
+    subgraph Anti DDoS Protection Layer
+        Nginx -->|Rate Limiting| RL[15 req/sec API / 3 req/sec Auth]
+        Nginx -->|Conn Limiting| CL[Max 20 Conns / IP]
+        Nginx -->|Scanner Block| SB[Block SQLMap / Nikto / Malicious Bots]
+        Nginx -->|Timeout Guards| TG[10s Slowloris Timeout Guard]
+    end
+
+    subgraph Load Balanced Backend Cluster
+        Nginx -->|Least Conn Upstream| B1[Backend Container 1:8080]
+        Nginx -->|Least Conn Upstream| B2[Backend Container 2:8080]
+    end
+
+    B1 --> Neon[Neon PostgreSQL]
+    B2 --> Neon
+    B1 --> Tencent[Tencent COS]
+    B2 --> Tencent
+```
+
+### 4.1 Nginx Security Features ("Anti-Server Crash / Anti-Jebol")
+- **Rate Limiting (`limit_req_zone`)**:
+  - `/v1/`: 15 requests/sec with a burst of 30.
+  - `/v1/auth/`: 3 requests/sec to prevent brute-force attacks.
+- **Connection Limiting (`limit_conn_zone`)**:
+  - Max 20 concurrent connections per IP address to defend against Slowloris and TCP starvation.
+- **Payload & Memory Protection**:
+  - `client_max_body_size 100M` caps upload size to protect server memory.
+  - Custom JSON 429 (`Too Many Requests`) and 503 (`Service Unavailable`) responses.
+- **Malicious Scanner Blocking**:
+  - Rejects user agents matching `sqlmap`, `nikto`, `dirbuster`, `nmap`, etc.
+
+### 4.2 Local & Server Deployment (`docker-compose`)
+To launch the load-balanced stack locally or on a production VM:
+```bash
+docker-compose up -d --build
+```
+This starts `ceguyyy_nginx_lb` on port `80`, load balancing requests across `ceguyyy_backend1` and `ceguyyy_backend2`.
 
 ## 5. Migration Strategy
 - Neon database migrations run automatically during the backend container startup or via an explicit CI step using standard PG clients.

@@ -39,11 +39,15 @@ class AuthService {
         const newUser = await userRepository.create(email, passwordHash, fullName, role.id, accessKey.trim());
         
         newUser.role_name = role.name;
-
-        const accessToken = this._signToken(newUser.id, newUser.role_name, 'access');
-        const refreshToken = this._signToken(newUser.id, newUser.role_name, 'refresh');
-
-        return { user: newUser, accessToken, refreshToken };
+        
+        // Generate OTP for registration verification
+        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+        const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+        await otpRepository.create(newUser.id, newUser.email, otpCode, expiresAt);
+        await telegramService.sendOtpMessage(newUser.email, otpCode);
+        
+        // Return flag indicating OTP is required
+        return { user: newUser, requiresOtp: true, email: newUser.email };
     }
 
     async login(email, password) {

@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  # Nginx Gateway & Static Frontend Server (Anti-DDoS Load Balancer)
+  nginx:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ceguyyy_nginx_lb
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+    depends_on:
+      - backend1
+      - backend2
+    networks:
+      - ceguyyy_network
+
+  # Backend Instance 1
+  backend1:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ceguyyy_backend1
+    restart: unless-stopped
+    environment:
+      - PORT=8080
+      - NODE_ENV=production
+      - TRUST_PROXY=1
+    env_file:
+      - ./backend/.env
+    networks:
+      - ceguyyy_network
+
+  # Backend Instance 2 (Load Balanced Replica)
+  backend2:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ceguyyy_backend2
+    restart: unless-stopped
+    environment:
+      - PORT=8080
+      - NODE_ENV=production
+      - TRUST_PROXY=1
+    env_file:
+      - ./backend/.env
+    networks:
+      - ceguyyy_network
+
+networks:
+  ceguyyy_network:
+    driver: bridge

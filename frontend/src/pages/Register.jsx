@@ -21,6 +21,11 @@ export default function Register() {
     const navigate = useNavigate();
     const setAuth = useAuthStore(state => state.setAuth);
     const [serverError, setServerError] = useState('');
+    const [step, setStep] = useState('register'); // 'register' | 'otp'
+    const [pendingEmail, setPendingEmail] = useState('');
+    const [otpCode, setOtpCode] = useState('');
+    const [otpMessage, setOtpMessage] = useState('');
+    const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
 
     const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
         resolver: zodResolver(schema)
@@ -70,13 +75,43 @@ export default function Register() {
         try {
             setServerError('');
             const response = await api.post('/auth/register', payload);
-            
-            const { accessToken, token, user } = response.data.data;
+            const data = response.data.data;
+            if (data.requiresOtp) {
+                setPendingEmail(data.email);
+                setOtpMessage(data.message || 'OTP sent via Telegram. Valid for 5 minutes.');
+                setStep('otp');
+            } else {
+                const { accessToken, token, user } = data;
+                const validToken = accessToken || token;
+                setAuth(validToken, user);
+                navigate('/drive');
+            }
+        } catch (err) {
+            setServerError(err.response?.data?.message || 'Registration failed');
+        }
+    };
+
+    const handleVerifyOtp = async (e) => {
+        e.preventDefault();
+        if (!otpCode || otpCode.length !== 6) {
+            setServerError('Please enter a valid 6-digit OTP code');
+            return;
+        }
+        setIsVerifyingOtp(true);
+        setServerError('');
+        try {
+            const res = await api.post('/auth/verify-otp', {
+                email: pendingEmail,
+                otpCode: otpCode.trim()
+            });
+            const { accessToken, token, user } = res.data.data;
             const validToken = accessToken || token;
             setAuth(validToken, user);
             navigate('/drive');
         } catch (err) {
-            setServerError(err.response?.data?.message || 'Registration failed');
+            setServerError(err.response?.data?.message || 'Invalid or expired OTP code');
+        } finally {
+            setIsVerifyingOtp(false);
         }
     };
 
@@ -95,99 +130,133 @@ export default function Register() {
                     </Alert>
                 )}
 
-                <Box component="form" onSubmit={handleSubmit(onSubmit)} sx={{ width: '100%', mt: 1 }}>
-                    <TextField
-                        margin="normal"
-                        required
-                        fullWidth
-                        type="password"
-                        id="accessKey"
-                        label="Primary Beta Access Key"
-                        placeholder="Enter Primary Beta Key"
-                        autoComplete="off"
-                        autoFocus
-                        {...register('accessKey')}
-                        error={!!errors.accessKey}
-                        helperText={errors.accessKey?.message}
-                    />
-                    <TextField
-                        margin="normal"
-                        required
-                        fullWidth
-                        type="password"
-                        id="secondaryAccessKey"
-                        label="Secondary Beta Access Key"
-                        placeholder="Enter Secondary Beta Key"
-                        autoComplete="off"
-                        {...register('secondaryAccessKey')}
-                        error={!!errors.secondaryAccessKey}
-                        helperText={errors.secondaryAccessKey?.message}
-                    />
-                    <TextField
-                        margin="normal"
-                        required
-                        fullWidth
-                        id="fullName"
-                        label="Full Name"
-                        autoComplete="name"
-                        {...register('fullName')}
-                        error={!!errors.fullName}
-                        helperText={errors.fullName?.message}
-                    />
-                    <TextField
-                        margin="normal"
-                        required
-                        fullWidth
-                        id="email"
-                        label="Email Address"
-                        autoComplete="email"
-                        {...register('email')}
-                        error={!!errors.email}
-                        helperText={errors.email?.message}
-                    />
-                    <TextField
-                        margin="normal"
-                        required
-                        fullWidth
-                        label="Password"
-                        type="password"
-                        id="password"
-                        autoComplete="new-password"
-                        {...register('password')}
-                        error={!!errors.password}
-                        helperText={errors.password?.message}
-                    />
-                    <Box 
-                        id="captcha-container" 
-                        sx={{ 
-                            width: '100%', 
-                            mt: 2,
-                            '& iframe': {
-                                width: '100% !important',
-                                border: '1px solid #c4c4c4 !important', // match TextField border
-                                borderRadius: '4px !important'
-                            }
-                        }}
-                    ></Box>
-                    <Button
-                        type="submit"
-                        fullWidth
-                        variant="contained"
-                        color="secondary"
-                        sx={{ mt: 3, mb: 2, py: 1.5 }}
-                        disabled={isSubmitting}
-                    >
-                        {isSubmitting ? 'Creating...' : 'Create Account'}
-                    </Button>
-                    <Box textAlign="center">
-                        <Typography variant="body2">
-                            Already have an account?{' '}
-                            <Link component={RouterLink} to="/login" variant="body2" fontWeight="bold">
-                                Sign In
-                            </Link>
-                        </Typography>
+                {step === 'register' ? (
+                    <Box component="form" onSubmit={handleSubmit(onSubmit)} sx={{ width: '100%', mt: 1 }}>
+                        <TextField
+                            margin="normal"
+                            required
+                            fullWidth
+                            type="password"
+                            id="accessKey"
+                            label="Primary Beta Access Key"
+                            placeholder="Enter Primary Beta Key"
+                            autoComplete="off"
+                            autoFocus
+                            {...register('accessKey')}
+                            error={!!errors.accessKey}
+                            helperText={errors.accessKey?.message}
+                        />
+                        <TextField
+                            margin="normal"
+                            required
+                            fullWidth
+                            type="password"
+                            id="secondaryAccessKey"
+                            label="Secondary Beta Access Key"
+                            placeholder="Enter Secondary Beta Key"
+                            autoComplete="off"
+                            {...register('secondaryAccessKey')}
+                            error={!!errors.secondaryAccessKey}
+                            helperText={errors.secondaryAccessKey?.message}
+                        />
+                        <TextField
+                            margin="normal"
+                            required
+                            fullWidth
+                            id="fullName"
+                            label="Full Name"
+                            autoComplete="name"
+                            {...register('fullName')}
+                            error={!!errors.fullName}
+                            helperText={errors.fullName?.message}
+                        />
+                        <TextField
+                            margin="normal"
+                            required
+                            fullWidth
+                            id="email"
+                            label="Email Address"
+                            autoComplete="email"
+                            {...register('email')}
+                            error={!!errors.email}
+                            helperText={errors.email?.message}
+                        />
+                        <TextField
+                            margin="normal"
+                            required
+                            fullWidth
+                            label="Password"
+                            type="password"
+                            id="password"
+                            autoComplete="new-password"
+                            {...register('password')}
+                            error={!!errors.password}
+                            helperText={errors.password?.message}
+                        />
+                        <Box 
+                            id="captcha-container" 
+                            sx={{ 
+                                width: '100%', 
+                                mt: 2,
+                                '& iframe': {
+                                    width: '100% !important',
+                                    border: '1px solid #c4c4c4 !important',
+                                    borderRadius: '4px !important'
+                                }
+                            }}
+                        ></Box>
+                        <Button
+                            type="submit"
+                            fullWidth
+                            variant="contained"
+                            color="secondary"
+                            sx={{ mt: 3, mb: 2, py: 1.5 }}
+                            disabled={isSubmitting}
+                        >
+                            {isSubmitting ? 'Creating...' : 'Create Account'}
+                        </Button>
+                        <Box textAlign="center">
+                            <Typography variant="body2">
+                                Already have an account?{' '}
+                                <Link component={RouterLink} to="/login" variant="body2" fontWeight="bold">
+                                    Sign In
+                                </Link>
+                            </Typography>
+                        </Box>
                     </Box>
-                </Box>
+                ) : (
+                    <Box component="form" onSubmit={handleVerifyOtp} sx={{ width: '100%', mt: 1 }}>
+                        <Alert severity="info" sx={{ width: '100%', mb: 2 }}>
+                            {otpMessage || 'OTP code sent via Telegram. Valid for 5 minutes.'}
+                        </Alert>
+                        <TextField
+                            margin="normal"
+                            required
+                            fullWidth
+                            id="otpCode"
+                            label="6-Digit Telegram OTP"
+                            placeholder="123456"
+                            value={otpCode}
+                            onChange={(e) => setOtpCode(e.target.value)}
+                            inputProps={{ maxLength: 6, style: { textAlign: 'center', fontSize: '1.25rem', letterSpacing: '0.5rem' } }}
+                            autoFocus
+                        />
+                        <Button
+                            type="submit"
+                            fullWidth
+                            variant="contained"
+                            sx={{ mt: 3, mb: 2, py: 1.5 }}
+                            disabled={isVerifyingOtp}
+                        >
+                            {isVerifyingOtp ? 'Verifying OTP...' : 'Verify OTP & Enter'}
+                        </Button>
+                        <Box textAlign="center">
+                            <Button variant="text" size="small" onClick={() => setStep('register')}>
+                                Back to Register
+                            </Button>
+                        </Box>
+                    </Box>
+                )}
             </Paper>
         </Container>
     );
