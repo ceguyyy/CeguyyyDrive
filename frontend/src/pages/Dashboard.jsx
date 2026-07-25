@@ -429,9 +429,6 @@ export default function Dashboard() {
                             {sortOrder === 'asc' ? <ArrowUpward fontSize="small" /> : <ArrowDownward fontSize="small" />}
                         </IconButton>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, bgcolor: 'background.paper', p: 0.5, borderRadius: 1, border: '1px solid #E5E7EB', ml: 1, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
-                            <Typography variant="caption" color="text.secondary" sx={{ px: 1, fontWeight: 700, display: { xs: 'none', sm: 'block' }, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                                View UI:
-                            </Typography>
                             <ToggleButtonGroup
                                 value={viewMode}
                                 exclusive
