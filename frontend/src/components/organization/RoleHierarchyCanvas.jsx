@@ -10,6 +10,7 @@ import {
     Position,
     ReactFlowProvider,
     MiniMap,
+    MarkerType,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import {
@@ -29,8 +30,6 @@ import { useAuthStore } from '../../store/authStore';
 function RoleNode({ id, data, isConnectable }) {
     const isOwnerNode = data.isOwnerNode;
     const canEdit = data.canEdit;
-    // superiorName: string | null
-    // subordinateNames: string[] 
     const superiorName = data.superiorName || null;
     const subordinateNames = data.subordinateNames || [];
 
@@ -38,8 +37,8 @@ function RoleNode({ id, data, isConnectable }) {
         <Paper
             elevation={4}
             sx={{
-                minWidth: 195,
-                maxWidth: 240,
+                minWidth: { xs: 170, sm: 200 },
+                maxWidth: { xs: 210, sm: 245 },
                 borderRadius: '12px',
                 overflow: 'hidden',
                 boxShadow: isOwnerNode
@@ -49,8 +48,9 @@ function RoleNode({ id, data, isConnectable }) {
                 bgcolor: 'background.paper',
             }}
         >
-            {/* Target handle */}
+            {/* Target handle (top) */}
             <Handle
+                id="top"
                 type="target"
                 position={Position.Top}
                 isConnectable={isConnectable && !isOwnerNode}
@@ -134,8 +134,9 @@ function RoleNode({ id, data, isConnectable }) {
                 )}
             </Box>
 
-            {/* Source handle */}
+            {/* Source handle (bottom) */}
             <Handle
+                id="bottom"
                 type="source"
                 position={Position.Bottom}
                 isConnectable={isConnectable && canEdit}
@@ -244,10 +245,12 @@ function HierarchyCanvasInner({ orgId, isOwner, currentUserRoleName }) {
                     id: `e-${String(r.parent_role_id)}-${String(r.id)}`,
                     source: String(r.parent_role_id),
                     target: String(r.id),
+                    sourceHandle: 'bottom',
+                    targetHandle: 'top',
                     type: 'smoothstep',
                     animated: true,
                     style: { stroke: '#3B82F6', strokeWidth: 2.5 },
-                    markerEnd: { type: 'arrowclosed', color: '#3B82F6' },
+                    markerEnd: { type: MarkerType.ArrowClosed, color: '#3B82F6' },
                 }));
 
             setEdges(initialEdges);
@@ -280,7 +283,6 @@ function HierarchyCanvasInner({ orgId, isOwner, currentUserRoleName }) {
                 updated = updated.map(n => {
                     const nid = String(n.id);
                     if (nid === srcId) {
-                        // Remove this target from source's subordinateNames
                         return {
                             ...n,
                             data: {
@@ -290,7 +292,6 @@ function HierarchyCanvasInner({ orgId, isOwner, currentUserRoleName }) {
                         };
                     }
                     if (nid === tgtId) {
-                        // Clear target's superiorName
                         return {
                             ...n,
                             data: { ...n.data, superiorName: null }
@@ -314,64 +315,50 @@ function HierarchyCanvasInner({ orgId, isOwner, currentUserRoleName }) {
             id: `e-${srcId}-${tgtId}`,
             source: srcId,
             target: tgtId,
+            sourceHandle: 'bottom',
+            targetHandle: 'top',
             type: 'smoothstep',
             animated: true,
             style: { stroke: '#3B82F6', strokeWidth: 2.5 },
-            markerEnd: { type: 'arrowclosed', color: '#3B82F6' },
+            markerEnd: { type: MarkerType.ArrowClosed, color: '#3B82F6' },
         };
+
         setEdges(eds => {
-            // Cycle guard: reject if src is already a descendant of tgt
-            // (walking up from src must never reach tgt)
-            const parentOf = {}; // childId -> parentId
+            const parentOf = {};
             eds.forEach(e => { parentOf[String(e.target)] = String(e.source); });
             let cursor = parentOf[srcId];
             while (cursor) {
-                if (cursor === tgtId) return eds; // would create a cycle — ignore
+                if (cursor === tgtId) return eds;
                 cursor = parentOf[cursor];
             }
 
-            // Enforce a single superior: detach the target from any previous parent
             const oldParentIds = eds
                 .filter(e => String(e.target) === tgtId)
                 .map(e => String(e.source));
             const withoutOldParent = eds.filter(e => String(e.target) !== tgtId);
-            const next = addEdge(newEdge, withoutOldParent);
+            return addEdge(newEdge, withoutOldParent);
+        });
 
-            // Update node data with actual names
-            setNodes(nds => {
-                const srcName = nds.find(n => String(n.id) === srcId)?.data.name || srcId;
-                const tgtName = nds.find(n => String(n.id) === tgtId)?.data.name || tgtId;
-                return nds.map(n => {
-                    const nid = String(n.id);
-                    if (nid === srcId) {
-                        // new superior gains the subordinate (deduped)
-                        const base = (n.data.subordinateNames || []).filter(s => s !== tgtName);
-                        return {
-                            ...n,
-                            data: { ...n.data, subordinateNames: [...base, tgtName] },
-                        };
-                    }
-                    if (oldParentIds.includes(nid) && nid !== srcId) {
-                        // previous superior loses the subordinate
-                        return {
-                            ...n,
-                            data: {
-                                ...n.data,
-                                subordinateNames: (n.data.subordinateNames || []).filter(s => s !== tgtName),
-                            }
-                        };
-                    }
-                    if (nid === tgtId) {
-                        // target's superior is now the new source
-                        return {
-                            ...n,
-                            data: { ...n.data, superiorName: srcName },
-                        };
-                    }
-                    return n;
-                });
+        setNodes(nds => {
+            const srcName = nds.find(n => String(n.id) === srcId)?.data.name || srcId;
+            const tgtName = nds.find(n => String(n.id) === tgtId)?.data.name || tgtId;
+            return nds.map(n => {
+                const nid = String(n.id);
+                if (nid === srcId) {
+                    const base = (n.data.subordinateNames || []).filter(s => s !== tgtName);
+                    return {
+                        ...n,
+                        data: { ...n.data, subordinateNames: [...base, tgtName] },
+                    };
+                }
+                if (nid === tgtId) {
+                    return {
+                        ...n,
+                        data: { ...n.data, superiorName: srcName },
+                    };
+                }
+                return n;
             });
-            return next;
         });
     }, []);
 
@@ -379,7 +366,6 @@ function HierarchyCanvasInner({ orgId, isOwner, currentUserRoleName }) {
         if (!newRoleName.trim()) return;
         const id = `node-${Date.now()}`;
 
-        // Find the current user's own role node (to auto-set as superior)
         const myNode = !isOwner && currentUserRoleName
             ? nodes.find(n => n.data.name.toLowerCase() === currentUserRoleName.toLowerCase())
             : null;
@@ -404,7 +390,6 @@ function HierarchyCanvasInner({ orgId, isOwner, currentUserRoleName }) {
         };
 
         setNodes(nds => {
-            // If myNode exists, update its subordinateNames (deduplicated)
             const updated = myNode
                 ? nds.map(n =>
                     String(n.id) === String(myNode.id)
@@ -420,21 +405,21 @@ function HierarchyCanvasInner({ orgId, isOwner, currentUserRoleName }) {
                         : n
                 )
                 : nds;
-            // Only add newNode if not already in list (StrictMode protection)
             if (updated.find(n => n.id === id)) return updated;
             return [...updated, newNode];
         });
 
-        // Auto-create edge from myNode to new node
         if (myNode) {
             const autoEdge = {
                 id: `e-${String(myNode.id)}-${id}`,
                 source: String(myNode.id),
                 target: id,
+                sourceHandle: 'bottom',
+                targetHandle: 'top',
                 type: 'smoothstep',
                 animated: true,
                 style: { stroke: '#8B5CF6', strokeWidth: 2.5 },
-                markerEnd: { type: 'arrowclosed', color: '#8B5CF6' },
+                markerEnd: { type: MarkerType.ArrowClosed, color: '#8B5CF6' },
             };
             setEdges(eds => addEdge(autoEdge, eds));
         }
@@ -476,10 +461,10 @@ function HierarchyCanvasInner({ orgId, isOwner, currentUserRoleName }) {
     };
 
     return (
-        <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
             {/* Toolbar */}
             <Box sx={{
-                p: '8px 14px',
+                p: { xs: '10px', sm: '8px 14px' },
                 bgcolor: 'background.paper',
                 borderBottom: '1px solid #E2E8F0',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1
@@ -488,26 +473,28 @@ function HierarchyCanvasInner({ orgId, isOwner, currentUserRoleName }) {
                     <TreeIcon color="primary" fontSize="small" />
                     <Typography variant="subtitle1" fontWeight={700}>Role Hierarchy</Typography>
                 </Box>
-                {/* Add Role + Save — visible to ALL org members */}
-                <Stack direction="row" spacing={1} alignItems="center">
+                {/* Add Role + Save */}
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems="center" sx={{ width: { xs: '100%', sm: 'auto' } }}>
                     <TextField
                         size="small" placeholder="New role name…"
                         value={newRoleName}
                         onChange={e => setNewRoleName(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && handleAddRole()}
-                        sx={{ width: 160, '& .MuiInputBase-input': { fontSize: '0.8rem' } }}
+                        sx={{ width: { xs: '100%', sm: 160 }, '& .MuiInputBase-input': { fontSize: '0.8rem' } }}
                     />
-                    <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={handleAddRole} disabled={!newRoleName.trim()}>
-                        Add Role
-                    </Button>
-                    <Button variant="contained" size="small" startIcon={<SaveIcon />} onClick={handleSave} disabled={saving}>
-                        {saving ? 'Saving…' : 'Save'}
-                    </Button>
+                    <Stack direction="row" spacing={1} sx={{ width: { xs: '100%', sm: 'auto' }, justifyContent: 'flex-end' }}>
+                        <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={handleAddRole} disabled={!newRoleName.trim()} fullWidth={{ xs: true, sm: false }}>
+                            Add Role
+                        </Button>
+                        <Button variant="contained" size="small" startIcon={<SaveIcon />} onClick={handleSave} disabled={saving} fullWidth={{ xs: true, sm: false }}>
+                            {saving ? 'Saving…' : 'Save'}
+                        </Button>
+                    </Stack>
                 </Stack>
             </Box>
 
             {/* Tip bar */}
-            <Box sx={{ px: 2, py: 0.5, bgcolor: '#EFF6FF', borderBottom: '1px solid #DBEAFE', display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+            <Box sx={{ px: 2, py: 0.5, bgcolor: '#EFF6FF', borderBottom: '1px solid #DBEAFE', display: 'flex', gap: { xs: 1, sm: 3 }, flexWrap: 'wrap' }}>
                 <Typography variant="caption" color="primary.main">📌 Drag card to move</Typography>
                 <Typography variant="caption" color="primary.main">🔗 Drag <strong>blue dot (bottom)</strong> → card to connect</Typography>
                 <Typography variant="caption" color="error.main">🗑 Click a line then press <strong>Delete</strong> to remove</Typography>
@@ -523,7 +510,7 @@ function HierarchyCanvasInner({ orgId, isOwner, currentUserRoleName }) {
             )}
 
             {/* Canvas */}
-            <Box sx={{ flexGrow: 1 }}>
+            <Box sx={{ flexGrow: 1, minHeight: 0, height: '100%', position: 'relative', width: '100%' }}>
                 <ReactFlow
                     nodes={nodes}
                     edges={edges}
@@ -539,12 +526,12 @@ function HierarchyCanvasInner({ orgId, isOwner, currentUserRoleName }) {
                     snapToGrid
                     snapGrid={[15, 15]}
                     deleteKeyCode="Delete"
-                    style={{ background: '#F8FAFC' }}
+                    style={{ width: '100%', height: '100%', background: '#F8FAFC' }}
                     defaultEdgeOptions={{
                         type: 'smoothstep',
                         animated: true,
                         style: { stroke: '#3B82F6', strokeWidth: 2.5 },
-                        markerEnd: { type: 'arrowclosed', color: '#3B82F6' },
+                        markerEnd: { type: MarkerType.ArrowClosed, color: '#3B82F6' },
                     }}
                 >
                     <Background color="#CBD5E1" gap={20} />
@@ -563,7 +550,7 @@ export default function RoleHierarchyCanvas({ orgId, orgOwnerId, members = [], c
     const currentUserRoleName = currentUserMembership?.role_name || null;
 
     return (
-        <Box sx={{ height: '580px', display: 'flex', flexDirection: 'column', borderRadius: 3, border: '1px solid #E2E8F0', overflow: 'hidden' }}>
+        <Box sx={{ height: { xs: '540px', sm: '640px', md: '700px' }, width: '100%', display: 'flex', flexDirection: 'column', borderRadius: 3, border: '1px solid #E2E8F0', overflow: 'hidden' }}>
             {/* Permission Info Banner */}
             {!isOwner && currentUserRoleName && (
                 <Box sx={{

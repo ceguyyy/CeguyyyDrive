@@ -1,11 +1,11 @@
-import React from 'react';
 import { 
     ReactFlow, 
     Controls, 
     Background, 
     Handle,
     Position,
-    ReactFlowProvider
+    ReactFlowProvider,
+    MarkerType
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { 
@@ -39,14 +39,14 @@ function FlowStepNode({ data }) {
             elevation={4} 
             sx={{ 
                 p: 2, 
-                minWidth: 220, 
+                minWidth: { xs: 180, sm: 220 }, 
                 borderRadius: 3, 
                 borderLeft: `6px solid ${borderColor}`,
                 bgcolor: 'background.paper',
                 border: '1px solid #E2E8F0'
             }}
         >
-            <Handle type="target" position={Position.Left} />
+            <Handle id="target-left" type="target" position={Position.Left} />
 
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
                 <Avatar src={data.avatarUrl} sx={{ width: 36, height: 36, bgcolor: borderColor }}>
@@ -111,7 +111,7 @@ function FlowStepNode({ data }) {
                 </Typography>
             )}
 
-            <Handle type="source" position={Position.Right} />
+            <Handle id="source-right" type="source" position={Position.Right} />
         </Paper>
     );
 }
@@ -167,8 +167,11 @@ export default function ApprovalFlowVisualizer({ approvalData }) {
             id: `edge-${prevNodeId}-${nodeId}`,
             source: prevNodeId,
             target: nodeId,
+            sourceHandle: 'source-right',
+            targetHandle: 'target-left',
             animated: st.status === 'pending',
-            style: { stroke: edgeColor, strokeWidth: 3 }
+            style: { stroke: edgeColor, strokeWidth: 3 },
+            markerEnd: { type: MarkerType.ArrowClosed, color: edgeColor },
         });
 
         prevNodeId = nodeId;
