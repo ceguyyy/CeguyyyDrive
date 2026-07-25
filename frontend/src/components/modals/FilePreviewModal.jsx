@@ -75,8 +75,11 @@ export default function FilePreviewModal({ isOpen, onClose, file }) {
     const isAudio = mime.startsWith('audio/');
     const isPdf = mime === 'application/pdf' || mime.includes('pdf') || fileName.endsWith('.pdf');
     
+    const isOfficeDoc = ['xlsx', 'xls', 'docx', 'doc', 'pptx', 'ppt', 'csv'].some(ext => fileName.endsWith('.' + ext)) ||
+        ['spreadsheet', 'wordprocessing', 'presentation', 'msword', 'ms-excel', 'ms-powerpoint'].some(t => mime.includes(t));
+
     // Supported formats for DocViewer
-    const isDocViewerSupported = [
+    const isDocViewerSupported = isOfficeDoc || [
         'text/', 'application/vnd.openxmlformats-officedocument', 'application/msword', 
         'application/vnd.ms-excel', 'application/vnd.ms-powerpoint'
     ].some(type => mime.startsWith(type));
@@ -150,8 +153,8 @@ export default function FilePreviewModal({ isOpen, onClose, file }) {
                     </Tooltip>
                 </Box>
             </DialogTitle>
-            <DialogContent sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: isDocViewerSupported || isPdf ? 0 : 4, height: '100%', bgcolor: 'common.white', '& *': { minHeight: 0 } }}>
-                <Box sx={{ width: '100%', height: '100%', display: 'flex', flex: 1, justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
+            <DialogContent sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', p: isDocViewerSupported || isPdf ? 0 : 4, height: '100%', width: '100%', bgcolor: 'common.white', overflow: 'hidden' }}>
+                <Box sx={{ width: '100%', height: '100%', display: 'flex', flex: 1, flexDirection: 'column', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
                     {isLoading && <CircularProgress color="primary" />}
                     {error && <Alert severity="error">{error}</Alert>}
                     
@@ -192,12 +195,24 @@ export default function FilePreviewModal({ isOpen, onClose, file }) {
                         </Box>
                     )}
 
-                    {!isLoading && previewUrl && isDocViewerSupported && !isImage && !isPdf && (
+                    {!isLoading && previewUrl && isOfficeDoc && !isImage && !isPdf && (
+                        <Box sx={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', flex: 1, bgcolor: '#ffffff' }}>
+                            <iframe 
+                                src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(previewUrl)}`}
+                                title={file.original_name || file.name}
+                                width="100%"
+                                height="100%"
+                                style={{ border: 'none', flex: 1, minHeight: '100%' }}
+                            />
+                        </Box>
+                    )}
+
+                    {!isLoading && previewUrl && isDocViewerSupported && !isOfficeDoc && !isImage && !isPdf && (
                         <Box sx={{ 
-                            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, bgcolor: 'common.white', overflow: 'hidden',
-                            '& #react-doc-viewer': { height: '100% !important', width: '100% !important', display: 'flex', flexDirection: 'column' },
-                            '& #react-doc-viewer > div': { flex: 1, height: '100% !important', width: '100% !important' },
-                            '& iframe': { height: '100% !important', width: '100% !important', border: 'none', flex: 1 }
+                            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', bgcolor: 'common.white', overflow: 'hidden',
+                            '& #react-doc-viewer, & #react-doc-viewer *, & #ms-doc-renderer, & #ms-doc-iframe, & iframe': { 
+                                height: '100% !important', width: '100% !important', minHeight: '100% !important', border: 'none !important', flex: '1 1 auto !important', display: 'flex !important', flexDirection: 'column !important' 
+                            }
                         }}>
                             <DocViewer 
                                 documents={[{ 
@@ -206,7 +221,7 @@ export default function FilePreviewModal({ isOpen, onClose, file }) {
                                     fileType: (file.original_name || file.name).split('.').pop() 
                                 }]} 
                                 pluginRenderers={DocViewerRenderers}
-                                style={{ width: '100%', height: '100%', backgroundColor: '#121212' }}
+                                style={{ width: '100%', height: '100%', backgroundColor: '#ffffff' }}
                                 config={{
                                     header: {
                                         disableHeader: true
