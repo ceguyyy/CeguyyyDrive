@@ -425,29 +425,34 @@ export default function Dashboard() {
                             <MenuItem value="date">Date Modified</MenuItem>
                             <MenuItem value="size">Size</MenuItem>
                         </Select>
-                        <IconButton onClick={() => setSortOrder(o => o === 'asc' ? 'desc' : 'asc')} size="small">
+                        <IconButton onClick={() => setSortOrder(o => o === 'asc' ? 'desc' : 'asc')} size="small" sx={{ bgcolor: 'common.white', border: '1px solid #E5E7EB', width: 36, height: 36 }}>
                             {sortOrder === 'asc' ? <ArrowUpward fontSize="small" /> : <ArrowDownward fontSize="small" />}
                         </IconButton>
-                        <ToggleButtonGroup
-                            value={viewMode}
-                            exclusive
-                            size="small"
-                            onChange={(e, nextMode) => {
-                                if (nextMode) {
-                                    setViewMode(nextMode);
-                                    localStorage.setItem('ceguyyy_view_mode', nextMode);
-                                }
-                            }}
-                            aria-label="view mode toggle"
-                            sx={{ height: 36, ml: 1, bgcolor: 'common.white' }}
-                        >
-                            <ToggleButton value="grid" aria-label="grid view" sx={{ px: 1.5, gap: 0.5, textTransform: 'none', fontWeight: 600 }}>
-                                <GridViewIcon fontSize="small" /> Grid
-                            </ToggleButton>
-                            <ToggleButton value="list" aria-label="list view" sx={{ px: 1.5, gap: 0.5, textTransform: 'none', fontWeight: 600 }}>
-                                <ViewListIcon fontSize="small" /> List
-                            </ToggleButton>
-                        </ToggleButtonGroup>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, bgcolor: 'background.paper', p: 0.5, borderRadius: 1, border: '1px solid #E5E7EB', ml: 1, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ px: 1, fontWeight: 700, display: { xs: 'none', sm: 'block' }, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                View UI:
+                            </Typography>
+                            <ToggleButtonGroup
+                                value={viewMode}
+                                exclusive
+                                size="small"
+                                onChange={(e, nextMode) => {
+                                    if (nextMode) {
+                                        setViewMode(nextMode);
+                                        localStorage.setItem('ceguyyy_view_mode', nextMode);
+                                    }
+                                }}
+                                aria-label="view mode toggle"
+                                sx={{ height: 32 }}
+                            >
+                                <ToggleButton value="grid" aria-label="card view" sx={{ px: 1.5, gap: 0.5, textTransform: 'none', fontWeight: 600, fontSize: '0.8rem' }}>
+                                    <GridViewIcon sx={{ fontSize: '1.1rem' }} /> Card UI
+                                </ToggleButton>
+                                <ToggleButton value="list" aria-label="list view" sx={{ px: 1.5, gap: 0.5, textTransform: 'none', fontWeight: 600, fontSize: '0.8rem' }}>
+                                    <ViewListIcon sx={{ fontSize: '1.1rem' }} /> List UI
+                                </ToggleButton>
+                            </ToggleButtonGroup>
+                        </Box>
                     </Box>
                 )}
             </Box>

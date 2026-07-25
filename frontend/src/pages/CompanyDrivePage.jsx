@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link as RouterLink } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     Box, Typography, Button, CircularProgress, Alert, Breadcrumbs,
-    Link, Menu, MenuItem, ListItemIcon, ListItemText, IconButton, Tooltip, ToggleButtonGroup, ToggleButton
+    Link, Menu, MenuItem, ListItemIcon, ListItemText, IconButton, Tooltip, ToggleButtonGroup, ToggleButton, Select
 } from '@mui/material';
 import {
     Add as PlusIcon,
@@ -13,7 +13,9 @@ import {
     Folder as FolderIcon,
     CloudUpload as CloudUploadIcon,
     GridView as GridViewIcon,
-    ViewList as ViewListIcon
+    ViewList as ViewListIcon,
+    ArrowUpward as ArrowUpwardIcon,
+    ArrowDownward as ArrowDownwardIcon
 } from '@mui/icons-material';
 import api from '../services/api';
 import FileGrid from '../features/files/FileGrid';
@@ -32,6 +34,9 @@ export default function CompanyDrivePage() {
     const [anchorEl, setAnchorEl] = useState(null);
     const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
+    const [viewMode, setViewMode] = useState(() => localStorage.getItem('ceguyyy_view_mode') || 'grid');
+    const [sortBy, setSortBy] = useState('name');
+    const [sortOrder, setSortOrder] = useState('asc');
 
     const uploadMutation = useOrgUpload(orgId, folderId);
     const { renameFolder, deleteFolder, renameFile, deleteFile } = useOrgItemActions(orgId, folderId);
@@ -127,6 +132,41 @@ export default function CompanyDrivePage() {
 
     const { folders = [], files = [] } = contents || {};
 
+    const sortedFolders = React.useMemo(() => {
+        return [...folders].sort((a, b) => {
+            if (sortBy === 'name') {
+                return sortOrder === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
+            }
+            if (sortBy === 'date') {
+                const dateA = new Date(a.created_at || 0);
+                const dateB = new Date(b.created_at || 0);
+                return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+            }
+            return 0;
+        });
+    }, [folders, sortBy, sortOrder]);
+
+    const sortedFiles = React.useMemo(() => {
+        return [...files].sort((a, b) => {
+            if (sortBy === 'name') {
+                const nameA = a.original_name || a.name || '';
+                const nameB = b.original_name || b.name || '';
+                return sortOrder === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
+            }
+            if (sortBy === 'date') {
+                const dateA = new Date(a.updated_at || a.created_at || 0);
+                const dateB = new Date(b.updated_at || b.created_at || 0);
+                return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+            }
+            if (sortBy === 'size') {
+                const sizeA = a.size || 0;
+                const sizeB = b.size || 0;
+                return sortOrder === 'asc' ? sizeA - sizeB : sizeB - sizeA;
+            }
+            return 0;
+        });
+    }, [files, sortBy, sortOrder]);
+
     return (
         <Box 
             onDragOver={handleDragOver}
@@ -158,7 +198,7 @@ export default function CompanyDrivePage() {
                 </Box>
             )}
             {/* Header / Breadcrumbs */}
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3, flexWrap: 'wrap', gap: 2 }}>
                 <Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                         <OrgIcon sx={{ color: 'primary.main', fontSize: 28 }} />
@@ -176,27 +216,51 @@ export default function CompanyDrivePage() {
                     </Breadcrumbs>
                 </Box>
 
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    <ToggleButtonGroup
-                        value={viewMode}
-                        exclusive
-                        size="small"
-                        onChange={(e, nextMode) => {
-                            if (nextMode) {
-                                setViewMode(nextMode);
-                                localStorage.setItem('ceguyyy_view_mode', nextMode);
-                            }
-                        }}
-                        aria-label="view mode toggle"
-                        sx={{ height: 36, bgcolor: 'common.white' }}
-                    >
-                        <ToggleButton value="grid" aria-label="grid view" sx={{ px: 1.5, gap: 0.5, textTransform: 'none', fontWeight: 600 }}>
-                            <GridViewIcon fontSize="small" /> Grid
-                        </ToggleButton>
-                        <ToggleButton value="list" aria-label="list view" sx={{ px: 1.5, gap: 0.5, textTransform: 'none', fontWeight: 600 }}>
-                            <ViewListIcon fontSize="small" /> List
-                        </ToggleButton>
-                    </ToggleButtonGroup>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, bgcolor: 'background.paper', p: 0.5, borderRadius: 1, border: '1px solid #E5E7EB', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                        <Typography variant="caption" color="text.secondary" sx={{ px: 1, fontWeight: 700, display: { xs: 'none', sm: 'block' }, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                            View UI:
+                        </Typography>
+                        <ToggleButtonGroup
+                            value={viewMode}
+                            exclusive
+                            size="small"
+                            onChange={(e, nextMode) => {
+                                if (nextMode) {
+                                    setViewMode(nextMode);
+                                    localStorage.setItem('ceguyyy_view_mode', nextMode);
+                                }
+                            }}
+                            aria-label="view mode toggle"
+                            sx={{ height: 32 }}
+                        >
+                            <ToggleButton value="grid" aria-label="card view" sx={{ px: 1.5, gap: 0.5, textTransform: 'none', fontWeight: 600, fontSize: '0.8rem' }}>
+                                <GridViewIcon sx={{ fontSize: '1.1rem' }} /> Card UI
+                            </ToggleButton>
+                            <ToggleButton value="list" aria-label="list view" sx={{ px: 1.5, gap: 0.5, textTransform: 'none', fontWeight: 600, fontSize: '0.8rem' }}>
+                                <ViewListIcon sx={{ fontSize: '1.1rem' }} /> List UI
+                            </ToggleButton>
+                        </ToggleButtonGroup>
+                    </Box>
+
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <Select
+                            value={sortBy}
+                            onChange={(e) => setSortBy(e.target.value)}
+                            size="small"
+                            variant="outlined"
+                            sx={{ minWidth: 110, height: 36, bgcolor: 'common.white', fontSize: '0.85rem' }}
+                        >
+                            <MenuItem value="name">Sort: Name</MenuItem>
+                            <MenuItem value="date">Sort: Date</MenuItem>
+                            <MenuItem value="size">Sort: Size</MenuItem>
+                        </Select>
+                        <Tooltip title={`Sort ${sortOrder === 'asc' ? 'Descending' : 'Ascending'}`}>
+                            <IconButton onClick={() => setSortOrder(o => o === 'asc' ? 'desc' : 'asc')} size="small" sx={{ bgcolor: 'common.white', border: '1px solid #E5E7EB', width: 36, height: 36 }}>
+                                {sortOrder === 'asc' ? <ArrowUpwardIcon fontSize="small" /> : <ArrowDownwardIcon fontSize="small" />}
+                            </IconButton>
+                        </Tooltip>
+                    </Box>
 
                     {folderId && (
                         <Box>
@@ -240,19 +304,20 @@ export default function CompanyDrivePage() {
             )}
 
             {/* Folders Section */}
-            {folders.length > 0 && (
+            {sortedFolders.length > 0 && (
                 <Box sx={{ mb: 4 }}>
                     <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1.5 }}>
-                        Folders ({folders.length})
+                        Folders ({sortedFolders.length})
                     </Typography>
                     <FileGrid viewMode={viewMode}>
-                        {folders.map(folder => (
+                        {sortedFolders.map(folder => (
                             <FolderCard
                                 key={folder.id}
                                 folder={folder}
                                 onOpen={(id) => navigate(`/company-drive/${orgId}/folders/${id}`)}
                                 customRenameFolder={renameFolder}
                                 customDeleteFolder={deleteFolder}
+                                viewMode={viewMode}
                             />
                         ))}
                     </FileGrid>
@@ -260,18 +325,19 @@ export default function CompanyDrivePage() {
             )}
 
             {/* Files Section */}
-            {files.length > 0 && (
+            {sortedFiles.length > 0 && (
                 <Box>
                     <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1.5 }}>
-                        Files ({files.length})
+                        Files ({sortedFiles.length})
                     </Typography>
                     <FileGrid viewMode={viewMode}>
-                        {files.map(file => (
+                        {sortedFiles.map(file => (
                             <FileCard 
                                 key={file.id} 
                                 file={file}
                                 customRenameFile={renameFile}
                                 customDeleteFile={deleteFile}
+                                viewMode={viewMode}
                             />
                         ))}
                     </FileGrid>
