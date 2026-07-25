@@ -85,3 +85,23 @@ This starts `ceguyyy_nginx_lb` on port `80`, load balancing requests across `ceg
 
 ## 5. Migration Strategy
 - Neon database migrations run automatically during the backend container startup or via an explicit CI step using standard PG clients.
+
+## 6. Upstash Context7 & Containerized Dependency Lock
+
+### 6.1 Upstash Context7 Integration
+[Upstash Context7](https://github.com/upstash/context7) is configured via [.context7.json](file:///c:/Users/CGuna/.gemini/antigravity-ide/scratch/CeguyyyDrive/.context7.json) to provide real-time, version-accurate documentation for project dependencies (Express 5, React 19, MUI 9, Tencent COS SDK, PostgreSQL `pg`, Zod).
+
+To query real-time documentation or trigger Context7 MCP setup:
+```bash
+npm run ctx7
+npm run ctx7:setup
+```
+
+### 6.2 Full Docker Dependency Isolation
+All application dependencies are fully containerized using multi-stage Docker builds (`npm ci`) driven by exact `package-lock.json` lockfiles:
+- **Zero Host Drift**: Prevents outdated or mismatched global node module versions on host machines.
+- **Dependency Audit**: Run containerized vulnerability and deprecation checks:
+  ```bash
+  npm run docker:audit
+  npm run docker:outdated
+  ```

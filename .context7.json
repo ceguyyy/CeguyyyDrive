@@ -1,0 +1,41 @@
+{
+  "$schema": "https://context7.com/schema.json",
+  "name": "CeguyyyDrive",
+  "description": "Enterprise cloud storage platform built with React, Node.js Express, PostgreSQL, and Tencent COS",
+  "libraries": [
+    {
+      "name": "express",
+      "version": "^5.2.1",
+      "docsUrl": "https://expressjs.com/"
+    },
+    {
+      "name": "react",
+      "version": "^19.2.7",
+      "docsUrl": "https://react.dev/"
+    },
+    {
+      "name": "@mui/material",
+      "version": "^9.2.0",
+      "docsUrl": "https://mui.com/"
+    },
+    {
+      "name": "cos-nodejs-sdk-v5",
+      "version": "^3.0.0",
+      "docsUrl": "https://cloud.tencent.com/document/product/436"
+    },
+    {
+      "name": "pg",
+      "version": "^8.11.5",
+      "docsUrl": "https://node-postgres.com/"
+    },
+    {
+      "name": "zod",
+      "version": "^4.4.3",
+      "docsUrl": "https://zod.dev/"
+    }
+  ],
+  "mcp": {
+    "enabled": true,
+    "package": "@upstash/context7-mcp"
+  }
+}

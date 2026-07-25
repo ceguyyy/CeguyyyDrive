@@ -1,0 +1,18 @@
+{
+  "name": "ceguyyydrive-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CeguyyyDrive Cloud Storage System Monorepo",
+  "scripts": {
+    "ctx7": "npx -y @upstash/context7-mcp",
+    "ctx7:setup": "npx -y ctx7 setup",
+    "docker:up": "docker-compose up -d --build",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "docker:audit": "docker-compose exec backend npm audit && docker-compose exec nginx npm audit",
+    "docker:outdated": "docker-compose exec backend npm outdated"
+  },
+  "devDependencies": {
+    "@upstash/context7-mcp": "^1.0.0"
+  }
+}

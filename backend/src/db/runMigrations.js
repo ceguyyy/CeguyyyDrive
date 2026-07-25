@@ -12,9 +12,20 @@ async function runMigrations() {
         process.exit(1);
     }
 
+    let connectionString = process.env.DATABASE_URL;
+    try {
+        const parsed = new URL(connectionString);
+        parsed.searchParams.delete('sslmode');
+        connectionString = parsed.toString();
+    } catch {
+        // fallback to raw connection string
+    }
+
+    const isLocal = process.env.DATABASE_URL.includes('localhost') || process.env.DATABASE_URL.includes('127.0.0.1');
+
     const client = new Client({
-        connectionString: process.env.DATABASE_URL,
-        ssl: process.env.DATABASE_URL.includes('localhost') ? false : { rejectUnauthorized: false }
+        connectionString,
+        ssl: isLocal ? false : { rejectUnauthorized: false }
     });
 
     try {
