@@ -3,7 +3,7 @@ import { useParams, Link as RouterLink, useSearchParams } from 'react-router-dom
 import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
 import FileGrid from '../features/files/FileGrid';
-import { Typography, Box, CircularProgress, Alert, Breadcrumbs, Link, Button, IconButton, Select, MenuItem, Pagination, Fab, Tooltip } from '@mui/material';
+import { Typography, Box, CircularProgress, Alert, Breadcrumbs, Link, Button, IconButton, Select, MenuItem, Pagination, Fab, Tooltip, ToggleButtonGroup, ToggleButton } from '@mui/material';
 import { NavigateNext as NavigateNextIcon, CloudUpload as CloudUploadIcon, Delete as DeleteIcon, Sort as SortIcon, ArrowUpward, ArrowDownward, Download as DownloadIcon, ContentPaste as ContentPasteIcon, Close as CloseIcon, ContentCopy as CopyIcon, ContentCut as CutIcon, DriveFileMove as DriveFileMoveIcon, Refresh as RefreshIcon, GridView as GridViewIcon, ViewList as ViewListIcon } from '@mui/icons-material';
 import { useUpload } from '../hooks/useUpload';
 import { useItemActions } from '../hooks/useItemActions';
@@ -428,19 +428,26 @@ export default function Dashboard() {
                         <IconButton onClick={() => setSortOrder(o => o === 'asc' ? 'desc' : 'asc')} size="small">
                             {sortOrder === 'asc' ? <ArrowUpward fontSize="small" /> : <ArrowDownward fontSize="small" />}
                         </IconButton>
-                        <Tooltip title={viewMode === 'grid' ? "Switch to List View" : "Switch to Card Grid View"}>
-                            <IconButton 
-                                onClick={() => {
-                                    const next = viewMode === 'grid' ? 'list' : 'grid';
-                                    setViewMode(next);
-                                    localStorage.setItem('ceguyyy_view_mode', next);
-                                }} 
-                                size="small"
-                                sx={{ border: '1px solid #E0E0E0', borderRadius: 1.5, p: 0.5, ml: 0.5 }}
-                            >
-                                {viewMode === 'grid' ? <ViewListIcon fontSize="small" /> : <GridViewIcon fontSize="small" />}
-                            </IconButton>
-                        </Tooltip>
+                        <ToggleButtonGroup
+                            value={viewMode}
+                            exclusive
+                            size="small"
+                            onChange={(e, nextMode) => {
+                                if (nextMode) {
+                                    setViewMode(nextMode);
+                                    localStorage.setItem('ceguyyy_view_mode', nextMode);
+                                }
+                            }}
+                            aria-label="view mode toggle"
+                            sx={{ height: 36, ml: 1, bgcolor: 'common.white' }}
+                        >
+                            <ToggleButton value="grid" aria-label="grid view" sx={{ px: 1.5, gap: 0.5, textTransform: 'none', fontWeight: 600 }}>
+                                <GridViewIcon fontSize="small" /> Grid
+                            </ToggleButton>
+                            <ToggleButton value="list" aria-label="list view" sx={{ px: 1.5, gap: 0.5, textTransform: 'none', fontWeight: 600 }}>
+                                <ViewListIcon fontSize="small" /> List
+                            </ToggleButton>
+                        </ToggleButtonGroup>
                     </Box>
                 )}
             </Box>

@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link as RouterLink } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     Box, Typography, Button, CircularProgress, Alert, Breadcrumbs,
-    Link, Menu, MenuItem, ListItemIcon, ListItemText, IconButton, Tooltip
+    Link, Menu, MenuItem, ListItemIcon, ListItemText, IconButton, Tooltip, ToggleButtonGroup, ToggleButton
 } from '@mui/material';
 import {
     Add as PlusIcon,
@@ -176,38 +176,61 @@ export default function CompanyDrivePage() {
                     </Breadcrumbs>
                 </Box>
 
-                {folderId && (
-                    <Box>
-                        <Button
-                            variant="contained"
-                            startIcon={<PlusIcon />}
-                            onClick={(e) => setAnchorEl(e.currentTarget)}
-                        >
-                            New
-                        </Button>
-                        <Menu
-                            anchorEl={anchorEl}
-                            open={Boolean(anchorEl)}
-                            onClose={() => setAnchorEl(null)}
-                            PaperProps={{ sx: { width: 180 } }}
-                        >
-                            <MenuItem onClick={() => { setIsCreateFolderOpen(true); setAnchorEl(null); }}>
-                                <ListItemIcon><CreateNewFolderIcon fontSize="small" /></ListItemIcon>
-                                <ListItemText>New Subfolder</ListItemText>
-                            </MenuItem>
-                            <MenuItem onClick={() => fileInputRef.current?.click()}>
-                                <ListItemIcon><UploadFileIcon fontSize="small" /></ListItemIcon>
-                                <ListItemText>Upload File</ListItemText>
-                            </MenuItem>
-                        </Menu>
-                        <input
-                            type="file"
-                            ref={fileInputRef}
-                            onChange={handleFileChange}
-                            style={{ display: 'none' }}
-                        />
-                    </Box>
-                )}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <ToggleButtonGroup
+                        value={viewMode}
+                        exclusive
+                        size="small"
+                        onChange={(e, nextMode) => {
+                            if (nextMode) {
+                                setViewMode(nextMode);
+                                localStorage.setItem('ceguyyy_view_mode', nextMode);
+                            }
+                        }}
+                        aria-label="view mode toggle"
+                        sx={{ height: 36, bgcolor: 'common.white' }}
+                    >
+                        <ToggleButton value="grid" aria-label="grid view" sx={{ px: 1.5, gap: 0.5, textTransform: 'none', fontWeight: 600 }}>
+                            <GridViewIcon fontSize="small" /> Grid
+                        </ToggleButton>
+                        <ToggleButton value="list" aria-label="list view" sx={{ px: 1.5, gap: 0.5, textTransform: 'none', fontWeight: 600 }}>
+                            <ViewListIcon fontSize="small" /> List
+                        </ToggleButton>
+                    </ToggleButtonGroup>
+
+                    {folderId && (
+                        <Box>
+                            <Button
+                                variant="contained"
+                                startIcon={<PlusIcon />}
+                                onClick={(e) => setAnchorEl(e.currentTarget)}
+                            >
+                                New
+                            </Button>
+                            <Menu
+                                anchorEl={anchorEl}
+                                open={Boolean(anchorEl)}
+                                onClose={() => setAnchorEl(null)}
+                                PaperProps={{ sx: { width: 180 } }}
+                            >
+                                <MenuItem onClick={() => { setIsCreateFolderOpen(true); setAnchorEl(null); }}>
+                                    <ListItemIcon><CreateNewFolderIcon fontSize="small" /></ListItemIcon>
+                                    <ListItemText>New Subfolder</ListItemText>
+                                </MenuItem>
+                                <MenuItem onClick={() => fileInputRef.current?.click()}>
+                                    <ListItemIcon><UploadFileIcon fontSize="small" /></ListItemIcon>
+                                    <ListItemText>Upload File</ListItemText>
+                                </MenuItem>
+                            </Menu>
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                onChange={handleFileChange}
+                                style={{ display: 'none' }}
+                            />
+                        </Box>
+                    )}
+                </Box>
             </Box>
 
             {!folderId && (

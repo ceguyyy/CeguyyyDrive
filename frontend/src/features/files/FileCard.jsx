@@ -18,7 +18,7 @@ const APPROVAL_BADGE = {
 };
 
 function formatBytes(bytes) {
-    if (bytes === 0) return '0 B';
+    if (!bytes || bytes === 0) return '0 B';
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
@@ -27,7 +27,8 @@ function formatBytes(bytes) {
 
 export default function FileCard({ 
     file, selected = false, onSelect = () => {}, selectionMode = false, 
-    onCopyItem, onCutItem, customRenameFile, customDeleteFile 
+    onCopyItem, onCutItem, customRenameFile, customDeleteFile,
+    viewMode = 'grid'
 }) {
     const [isRenameOpen, setIsRenameOpen] = useState(false);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -61,7 +62,7 @@ export default function FileCard({
             return res.data.data.downloadUrl;
         },
         enabled: isImage,
-        staleTime: 1000 * 60 * 15 // 15 mins cache
+        staleTime: 1000 * 60 * 15
     });
 
     const handleCardClick = (e) => {
@@ -72,6 +73,135 @@ export default function FileCard({
             setIsPreviewOpen(true);
         }
     };
+
+    if (viewMode === 'list') {
+        return (
+            <>
+                <Card 
+                    draggable
+                    onDragStart={(e) => {
+                        e.dataTransfer.setData('application/json', JSON.stringify({ type: 'file', id: file.id }));
+                        e.dataTransfer.effectAllowed = 'move';
+                    }}
+                    elevation={0}
+                    onClick={handleCardClick}
+                    sx={{
+                        width: '100%',
+                        height: 52,
+                        display: 'flex',
+                        alignItems: 'center',
+                        px: 2,
+                        gap: 2,
+                        borderRadius: 2,
+                        border: selected ? '2px solid #1976d2' : '1px solid #E5E7EB',
+                        bgcolor: selected ? '#EFF6FF' : '#FFFFFF',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease-in-out',
+                        '&:hover': { bgcolor: '#F9FAFB', border: '1px solid #D1D5DB' }
+                    }}
+                >
+                    <Checkbox 
+                        checked={selected}
+                        onChange={(e) => { e.stopPropagation(); onSelect(); }}
+                        onClick={(e) => e.stopPropagation()}
+                        size="small"
+                    />
+                    
+                    {isImage && thumbnailUrl ? (
+                        <Box component="img" src={thumbnailUrl} alt={displayName} sx={{ width: 28, height: 28, borderRadius: 1, objectFit: 'cover' }} />
+                    ) : (
+                        <DocumentIcon sx={{ color: '#2563EB', fontSize: 24 }} />
+                    )}
+
+                    <Typography variant="body2" fontWeight="500" sx={{ flex: 1, minWidth: 0, color: 'text.primary' }} noWrap title={displayName}>
+                        {displayName}
+                    </Typography>
+
+                    {approvalBadge && (
+                        <Chip
+                            icon={<approvalBadge.icon sx={{ fontSize: '0.8rem' }} />}
+                            label={approvalBadge.label}
+                            size="small"
+                            color={approvalBadge.color}
+                            onClick={(e) => { e.stopPropagation(); setIsApprovalMetaOpen(true); }}
+                            sx={{ height: 22, fontSize: '0.65rem' }}
+                        />
+                    )}
+
+                    <IconButton
+                        size="small"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            starMutation.mutate();
+                        }}
+                        sx={{ color: file.is_starred ? '#D97706' : '#D1D5DB' }}
+                    >
+                        {file.is_starred ? <StarFilledIcon sx={{ fontSize: 18 }} /> : <StarOutlineIcon sx={{ fontSize: 18 }} />}
+                    </IconButton>
+
+                    {file.created_at && (
+                        <Typography variant="caption" color="text.secondary" sx={{ minWidth: 140, display: { xs: 'none', sm: 'block' } }}>
+                            {new Date(file.created_at).toLocaleDateString()}
+                        </Typography>
+                    )}
+
+                    <Typography variant="caption" color="text.secondary" sx={{ minWidth: 80, display: { xs: 'none', md: 'block' } }}>
+                        {formatBytes(file.size)}
+                    </Typography>
+
+                    <Box onClick={(e) => e.stopPropagation()}>
+                        <ContextMenu
+                            isStarred={file.is_starred}
+                            onStar={() => starMutation.mutate()}
+                            onRename={() => setIsRenameOpen(true)}
+                            onDelete={() => deleteFile.mutate(file.id)}
+                            onShare={() => setIsShareOpen(true)}
+                            onApproval={() => setIsApprovalOpen(true)}
+                            onViewApprovalStatus={approvalBadge ? () => setIsApprovalMetaOpen(true) : null}
+                            onCopy={() => onCopyItem?.('file', file.id)}
+                            onCut={() => onCutItem?.('file', file.id)}
+                        />
+                    </Box>
+                </Card>
+
+                <RenameModal 
+                    isOpen={isRenameOpen}
+                    currentName={displayName}
+                    onClose={() => setIsRenameOpen(false)}
+                    onSave={(newName) => renameFile.mutate({ id: file.id, newName })}
+                />
+
+                <FilePreviewModal
+                    isOpen={isPreviewOpen}
+                    onClose={() => setIsPreviewOpen(false)}
+                    file={file}
+                />
+
+                <ShareModal
+                    isOpen={isShareOpen}
+                    onClose={() => setIsShareOpen(false)}
+                    itemType="file"
+                    itemId={file.id}
+                    itemName={displayName}
+                />
+
+                <SubmitForApprovalModal
+                    isOpen={isApprovalOpen}
+                    onClose={() => setIsApprovalOpen(false)}
+                    isFile={true}
+                    item={file}
+                />
+
+                {file.approval_request_id && (
+                    <ApprovalMetadataModal
+                        isOpen={isApprovalMetaOpen}
+                        onClose={() => setIsApprovalMetaOpen(false)}
+                        requestId={file.approval_request_id}
+                    />
+                )}
+            </>
+        );
+    }
 
     return (
         <>
@@ -85,7 +215,7 @@ export default function FileCard({
                 sx={{ 
                     aspectRatio: '1 / 1', overflow: 'hidden', height: '100%', 
                     display: 'flex', flexDirection: 'column', position: 'relative',
-                    border: selected ? '2px solid #1976d2' : '1px solid transparent',
+                    border: selected ? '2px solid #1976d2' : '1px solid #E5E7EB',
                     '&:hover .selection-checkbox': { opacity: 1 },
                     '&:hover .star-button': { opacity: 1 },
                     cursor: 'grab',

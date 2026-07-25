@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
 import { Folder as FolderIcon } from '@mui/icons-material';
 import { Card, CardActionArea, CardContent, Typography, Box, Checkbox } from '@mui/material';
 import ContextMenu from '../../components/ui/ContextMenu';
@@ -10,7 +9,8 @@ import { useItemActions } from '../../hooks/useItemActions';
 
 export default function FolderCard({ 
     folder, selected = false, onSelect = () => {}, selectionMode = false, 
-    onCopyItem, onCutItem, onOpen, customRenameFolder, customDeleteFolder 
+    onCopyItem, onCutItem, onOpen, customRenameFolder, customDeleteFolder,
+    viewMode = 'grid'
 }) {
     const [isRenameOpen, setIsRenameOpen] = useState(false);
     const [isShareOpen, setIsShareOpen] = useState(false);
@@ -31,6 +31,103 @@ export default function FolderCard({
         }
     };
 
+    if (viewMode === 'list') {
+        return (
+            <>
+                <Card 
+                    draggable
+                    onDragStart={(e) => {
+                        e.dataTransfer.setData('application/json', JSON.stringify({ type: 'folder', id: folder.id }));
+                        e.dataTransfer.effectAllowed = 'move';
+                    }}
+                    onDragOver={(e) => {
+                        e.preventDefault();
+                        if (!isDragOver) setIsDragOver(true);
+                    }}
+                    onDragLeave={(e) => {
+                        e.preventDefault();
+                        setIsDragOver(false);
+                    }}
+                    onDrop={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setIsDragOver(false);
+                        try {
+                            const dataString = e.dataTransfer.getData('application/json');
+                            if (!dataString) return;
+                            const data = JSON.parse(dataString);
+                            if (data.id === folder.id) return;
+                            if (data.type === 'file') {
+                                moveFile.mutate({ id: data.id, targetFolderId: folder.id });
+                            } else if (data.type === 'folder') {
+                                moveFolder.mutate({ id: data.id, targetFolderId: folder.id });
+                            }
+                        } catch (err) {}
+                    }}
+                    elevation={0}
+                    onClick={handleCardClick}
+                    sx={{
+                        width: '100%',
+                        height: 52,
+                        display: 'flex',
+                        alignItems: 'center',
+                        px: 2,
+                        gap: 2,
+                        borderRadius: 2,
+                        border: selected ? '2px solid #1976d2' : isDragOver ? '2px dashed #1976d2' : '1px solid #E5E7EB',
+                        bgcolor: isDragOver ? 'rgba(25, 118, 210, 0.08)' : selected ? '#EFF6FF' : '#FFFFFF',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease-in-out',
+                        '&:hover': { bgcolor: '#F9FAFB', border: '1px solid #D1D5DB' }
+                    }}
+                >
+                    <Checkbox 
+                        checked={selected}
+                        onChange={(e) => { e.stopPropagation(); onSelect(); }}
+                        onClick={(e) => e.stopPropagation()}
+                        size="small"
+                    />
+                    <FolderIcon sx={{ color: '#F59E0B', fontSize: 24 }} />
+                    <Typography variant="body2" fontWeight="600" sx={{ flex: 1, minWidth: 0, color: 'text.primary' }} noWrap>
+                        {folder.name}
+                    </Typography>
+                    {folder.created_at && (
+                        <Typography variant="caption" color="text.secondary" sx={{ minWidth: 140, display: { xs: 'none', sm: 'block' } }}>
+                            {new Date(folder.created_at).toLocaleDateString()}
+                        </Typography>
+                    )}
+                    <Typography variant="caption" color="text.secondary" sx={{ minWidth: 80, display: { xs: 'none', md: 'block' } }}>
+                        Folder
+                    </Typography>
+                    <Box onClick={(e) => e.stopPropagation()}>
+                        <ContextMenu 
+                            onRename={() => setIsRenameOpen(true)}
+                            onDelete={() => deleteFolder.mutate(folder.id)}
+                            onShare={() => setIsShareOpen(true)}
+                            onCopy={() => onCopyItem?.('folder', folder.id)}
+                            onCut={() => onCutItem?.('folder', folder.id)}
+                        />
+                    </Box>
+                </Card>
+
+                <RenameModal 
+                    isOpen={isRenameOpen}
+                    currentName={folder.name}
+                    onClose={() => setIsRenameOpen(false)}
+                    onSave={(newName) => renameFolder.mutate({ id: folder.id, newName })}
+                />
+
+                <ShareModal
+                    isOpen={isShareOpen}
+                    onClose={() => setIsShareOpen(false)}
+                    itemType="folder"
+                    itemId={folder.id}
+                    itemName={folder.name}
+                />
+            </>
+        );
+    }
+
     return (
         <>
             <Card 
@@ -49,30 +146,25 @@ export default function FolderCard({
                 }}
                 onDrop={(e) => {
                     e.preventDefault();
-                    e.stopPropagation(); // Prevent the parent Dashboard from trying to upload it as a file
+                    e.stopPropagation();
                     setIsDragOver(false);
-                    
                     try {
                         const dataString = e.dataTransfer.getData('application/json');
                         if (!dataString) return;
-                        
                         const data = JSON.parse(dataString);
-                        if (data.id === folder.id) return; // Cannot drop into itself
-                        
+                        if (data.id === folder.id) return;
                         if (data.type === 'file') {
                             moveFile.mutate({ id: data.id, targetFolderId: folder.id });
                         } else if (data.type === 'folder') {
                             moveFolder.mutate({ id: data.id, targetFolderId: folder.id });
                         }
-                    } catch (err) {
-                        // Not a valid JSON payload from our internal drag
-                    }
+                    } catch (err) {}
                 }}
                 elevation={0} 
                 sx={{ 
                     aspectRatio: '1 / 1', overflow: 'hidden', height: '100%', 
                     display: 'flex', flexDirection: 'column', position: 'relative',
-                    border: selected ? '2px solid #1976d2' : isDragOver ? '2px dashed #1976d2' : '1px solid transparent',
+                    border: selected ? '2px solid #1976d2' : isDragOver ? '2px dashed #1976d2' : '1px solid #E5E7EB',
                     bgcolor: isDragOver ? 'rgba(25, 118, 210, 0.08)' : 'background.paper',
                     '&:hover .selection-checkbox': { opacity: 1 },
                     cursor: 'grab',
