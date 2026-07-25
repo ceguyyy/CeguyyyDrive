@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link as RouterLink } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     Box, Typography, Button, CircularProgress, Alert, Breadcrumbs,
-    Link, Menu, MenuItem, ListItemIcon, ListItemText
+    Link, Menu, MenuItem, ListItemIcon, ListItemText, IconButton, Tooltip
 } from '@mui/material';
 import {
     Add as PlusIcon,
@@ -11,7 +11,9 @@ import {
     UploadFile as UploadFileIcon,
     Business as OrgIcon,
     Folder as FolderIcon,
-    CloudUpload as CloudUploadIcon
+    CloudUpload as CloudUploadIcon,
+    GridView as GridViewIcon,
+    ViewList as ViewListIcon
 } from '@mui/icons-material';
 import api from '../services/api';
 import FileGrid from '../features/files/FileGrid';
@@ -127,19 +129,28 @@ export default function CompanyDrivePage() {
 
     return (
         <Box 
-            sx={{ p: 3, minHeight: '85vh', position: 'relative' }}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
+            sx={{ position: 'relative', minHeight: '80vh', p: 3 }}
         >
+            {/* Drag Overlay */}
             {isDragging && (
-                <Box sx={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    bgcolor: 'rgba(25, 118, 210, 0.12)', border: '3px dashed #1976D2',
-                    zIndex: 9999, display: 'flex', flexDirection: 'column',
-                    alignItems: 'center', justifyContent: 'center',
-                    backdropFilter: 'blur(3px)', pointerEvents: 'none'
-                }}>
+                <Box
+                    sx={{
+                        position: 'fixed',
+                        top: 0, left: 0, right: 0, bottom: 0,
+                        bgcolor: 'rgba(25, 118, 210, 0.12)',
+                        border: '3px dashed #1976d2',
+                        zIndex: 9999,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backdropFilter: 'blur(3px)',
+                        pointerEvents: 'none'
+                    }}
+                >
                     <CloudUploadIcon sx={{ fontSize: 72, color: 'primary.main', mb: 2 }} />
                     <Typography variant="h5" fontWeight="bold" color="primary">
                         Drop file to upload to Company Drive
@@ -211,7 +222,7 @@ export default function CompanyDrivePage() {
                     <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1.5 }}>
                         Folders ({folders.length})
                     </Typography>
-                    <FileGrid>
+                    <FileGrid viewMode={viewMode}>
                         {folders.map(folder => (
                             <FolderCard
                                 key={folder.id}
@@ -231,7 +242,7 @@ export default function CompanyDrivePage() {
                     <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1.5 }}>
                         Files ({files.length})
                     </Typography>
-                    <FileGrid>
+                    <FileGrid viewMode={viewMode}>
                         {files.map(file => (
                             <FileCard 
                                 key={file.id} 

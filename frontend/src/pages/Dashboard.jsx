@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
 import FileGrid from '../features/files/FileGrid';
 import { Typography, Box, CircularProgress, Alert, Breadcrumbs, Link, Button, IconButton, Select, MenuItem, Pagination, Fab, Tooltip } from '@mui/material';
-import { NavigateNext as NavigateNextIcon, CloudUpload as CloudUploadIcon, Delete as DeleteIcon, Sort as SortIcon, ArrowUpward, ArrowDownward, Download as DownloadIcon, ContentPaste as ContentPasteIcon, Close as CloseIcon, ContentCopy as CopyIcon, ContentCut as CutIcon, DriveFileMove as DriveFileMoveIcon, Refresh as RefreshIcon } from '@mui/icons-material';
+import { NavigateNext as NavigateNextIcon, CloudUpload as CloudUploadIcon, Delete as DeleteIcon, Sort as SortIcon, ArrowUpward, ArrowDownward, Download as DownloadIcon, ContentPaste as ContentPasteIcon, Close as CloseIcon, ContentCopy as CopyIcon, ContentCut as CutIcon, DriveFileMove as DriveFileMoveIcon, Refresh as RefreshIcon, GridView as GridViewIcon, ViewList as ViewListIcon } from '@mui/icons-material';
 import { useUpload } from '../hooks/useUpload';
 import { useItemActions } from '../hooks/useItemActions';
 import { useClipboardStore } from '../store/clipboardStore';
@@ -41,9 +41,10 @@ export default function Dashboard() {
         } catch (err) {}
     };
     
-    // Sort State
+    // Sort & View State
     const [sortBy, setSortBy] = useState('name');
     const [sortOrder, setSortOrder] = useState('asc'); // 'asc' or 'desc'
+    const [viewMode, setViewMode] = useState(() => localStorage.getItem('ceguyyy_view_mode') || 'grid');
 
     const [searchParams] = useSearchParams();
     const searchQuery = (searchParams.get('q') || '').toLowerCase();
@@ -427,6 +428,19 @@ export default function Dashboard() {
                         <IconButton onClick={() => setSortOrder(o => o === 'asc' ? 'desc' : 'asc')} size="small">
                             {sortOrder === 'asc' ? <ArrowUpward fontSize="small" /> : <ArrowDownward fontSize="small" />}
                         </IconButton>
+                        <Tooltip title={viewMode === 'grid' ? "Switch to List View" : "Switch to Card Grid View"}>
+                            <IconButton 
+                                onClick={() => {
+                                    const next = viewMode === 'grid' ? 'list' : 'grid';
+                                    setViewMode(next);
+                                    localStorage.setItem('ceguyyy_view_mode', next);
+                                }} 
+                                size="small"
+                                sx={{ border: '1px solid #E0E0E0', borderRadius: 1.5, p: 0.5, ml: 0.5 }}
+                            >
+                                {viewMode === 'grid' ? <ViewListIcon fontSize="small" /> : <GridViewIcon fontSize="small" />}
+                            </IconButton>
+                        </Tooltip>
                     </Box>
                 )}
             </Box>
@@ -467,6 +481,7 @@ export default function Dashboard() {
                     files={paginatedFiles} 
                     sortBy={sortBy}
                     sortOrder={sortOrder}
+                    viewMode={viewMode}
                     selectedFolders={selectedFolders}
                     selectedFiles={selectedFiles}
                     onToggleFolder={(id) => {

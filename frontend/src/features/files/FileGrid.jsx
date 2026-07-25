@@ -1,7 +1,11 @@
 import React, { useMemo } from 'react';
 import FolderCard from './FolderCard';
 import FileCard from './FileCard';
-import { Box, Typography } from '@mui/material';
+import { 
+    Box, Typography, Table, TableBody, TableCell, 
+    TableContainer, TableHead, TableRow, Paper, Checkbox
+} from '@mui/material';
+import { Folder as FolderIcon, InsertDriveFile as FileIcon } from '@mui/icons-material';
 
 const getFirstLetter = (name) => {
     if (!name) return '#';
@@ -9,12 +13,21 @@ const getFirstLetter = (name) => {
     return /[A-Z]/.test(char) ? char : '#';
 };
 
+function formatBytes(bytes) {
+    if (!bytes || bytes === 0) return '-';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
 export default function FileGrid({ 
     folders = [], files = [], sortBy = 'name', sortOrder = 'asc',
     selectedFolders = new Set(), selectedFiles = new Set(), 
     onToggleFolder = () => {}, onToggleFile = () => {}, 
     selectionMode = false,
     onCopyItem, onCutItem,
+    viewMode = 'grid',
     children
 }) {
     if (children) {
@@ -40,17 +53,75 @@ export default function FileGrid({
         return (
             <Box sx={{ 
                 flex: 1, 
-                border: '2px dashed text.secondary',
+                border: '2px dashed #D0D0D0',
                 bgcolor: 'background.paper',
                 display: 'flex', 
                 alignItems: 'center', 
                 justifyContent: 'center',
-                borderRadius: 2
+                borderRadius: 2,
+                p: 4
             }}>
                 <Typography variant="h6" color="text.secondary">
                     This folder is empty
                 </Typography>
             </Box>
+        );
+    }
+
+    if (viewMode === 'list') {
+        return (
+            <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #E0E0E0', borderRadius: 2, mb: 4 }}>
+                <Table sx={{ minWidth: 650 }} aria-label="file list view">
+                    <TableHead sx={{ bgcolor: 'grey.50' }}>
+                        <TableRow>
+                            <TableCell padding="checkbox" sx={{ fontWeight: 'bold' }}>
+                                Item
+                            </TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }}>Name</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }}>Date Modified</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }}>Size</TableCell>
+                        </TableRow>
+                    </TableHead>
+                    <TableBody>
+                        {folders.map((folder) => (
+                            <TableRow 
+                                key={`folder-row-${folder.id}`} 
+                                hover 
+                                sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
+                            >
+                                <TableCell padding="checkbox" colSpan={4} sx={{ p: 0 }}>
+                                    <FolderCard 
+                                        folder={folder} 
+                                        selected={selectedFolders.has(folder.id)}
+                                        onSelect={() => onToggleFolder(folder.id)}
+                                        selectionMode={selectionMode}
+                                        onCopyItem={onCopyItem}
+                                        onCutItem={onCutItem}
+                                    />
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                        {files.map((file) => (
+                            <TableRow 
+                                key={`file-row-${file.id}`} 
+                                hover
+                                sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
+                            >
+                                <TableCell padding="checkbox" colSpan={4} sx={{ p: 0 }}>
+                                    <FileCard 
+                                        file={file} 
+                                        selected={selectedFiles.has(file.id)}
+                                        onSelect={() => onToggleFile(file.id)}
+                                        selectionMode={selectionMode}
+                                        onCopyItem={onCopyItem}
+                                        onCutItem={onCutItem}
+                                    />
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </TableContainer>
         );
     }
 

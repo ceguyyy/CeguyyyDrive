@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { 
     Dialog, DialogTitle, DialogContent, 
-    IconButton, Typography, Box, CircularProgress, Button, Alert, Tooltip
+    IconButton, Typography, Box, CircularProgress, Tooltip
 } from '@mui/material';
 import { Close as CloseIcon, Download as DownloadIcon, OpenInNew as OpenInNewIcon } from '@mui/icons-material';
 import api from '../../services/api';
 import PromptModal from './PromptModal';
-import DocViewer, { DocViewerRenderers } from "@cyntler/react-doc-viewer";
-import "@cyntler/react-doc-viewer/dist/index.css";
+import { FilePreviewEmbed } from '@eternalheart/react-file-preview';
+import '@eternalheart/react-file-preview/style.css';
 
 export default function FilePreviewModal({ isOpen, onClose, file }) {
     const [previewUrl, setPreviewUrl] = useState(null);
@@ -37,7 +37,6 @@ export default function FilePreviewModal({ isOpen, onClose, file }) {
 
                     if (isPdf) {
                         try {
-                            // Fetch as blob to guarantee 100% inline PDF preview without browser auto-downloading
                             const response = await fetch(url);
                             const blob = await response.blob();
                             const pdfBlob = new Blob([blob], { type: 'application/pdf' });
@@ -68,21 +67,15 @@ export default function FilePreviewModal({ isOpen, onClose, file }) {
 
     if (!isOpen || !file) return null;
 
-    const mime = file.mime_type || '';
-    const fileName = (file.original_name || file.name || '').toLowerCase();
-    const isImage = mime.startsWith('image/');
-    const isVideo = mime.startsWith('video/');
-    const isAudio = mime.startsWith('audio/');
-    const isPdf = mime === 'application/pdf' || mime.includes('pdf') || fileName.endsWith('.pdf');
-    
-    const isOfficeDoc = ['xlsx', 'xls', 'docx', 'doc', 'pptx', 'ppt', 'csv'].some(ext => fileName.endsWith('.' + ext)) ||
-        ['spreadsheet', 'wordprocessing', 'presentation', 'msword', 'ms-excel', 'ms-powerpoint'].some(t => mime.includes(t));
+    const fileName = file.original_name || file.name || '';
+    const fileExt = fileName.includes('.') ? fileName.split('.').pop().toLowerCase() : '';
 
-    // Supported formats for DocViewer
-    const isDocViewerSupported = isOfficeDoc || [
-        'text/', 'application/vnd.openxmlformats-officedocument', 'application/msword', 
-        'application/vnd.ms-excel', 'application/vnd.ms-powerpoint'
-    ].some(type => mime.startsWith(type));
+    const previewFiles = previewUrl ? [{
+        url: previewUrl,
+        name: fileName,
+        fileType: fileExt,
+        size: file.size || 0
+    }] : [];
 
     const triggerDownload = async (newName) => {
         setIsPromptOpen(false);
@@ -122,7 +115,7 @@ export default function FilePreviewModal({ isOpen, onClose, file }) {
         >
             <DialogTitle sx={{ m: 0, p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'text.primary', bgcolor: 'grey.100', flexShrink: 0 }}>
                 <Typography variant="h6" noWrap sx={{ flex: 1, color: 'text.primary' }}>
-                    {file.original_name || file.name}
+                    {fileName}
                 </Typography>
                 <Box sx={{ display: 'flex', gap: 1 }}>
                     {(rawDownloadUrl || previewUrl) && (
@@ -162,93 +155,29 @@ export default function FilePreviewModal({ isOpen, onClose, file }) {
                     </Tooltip>
                 </Box>
             </DialogTitle>
-            <DialogContent sx={{ display: 'flex', flexDirection: 'column', flex: 1, p: 0, height: 'calc(100vh - 64px)', width: '100%', bgcolor: 'common.white', overflow: 'hidden', position: 'relative' }}>
+            <DialogContent sx={{ display: 'flex', flexDirection: 'column', flex: 1, p: 0, height: 'calc(100vh - 64px)', width: '100%', bgcolor: '#ffffff', overflow: 'hidden', position: 'relative' }}>
                 <Box sx={{ width: '100%', height: '100%', display: 'flex', flex: 1, flexDirection: 'column', justifyContent: 'center', alignItems: 'center', position: 'relative', overflow: 'hidden' }}>
                     {isLoading && <CircularProgress color="primary" />}
-                    {error && <Alert severity="error">{error}</Alert>}
-                    
-                    {!isLoading && previewUrl && isImage && (
-                        <Box component="img" src={previewUrl} alt={file.name} sx={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
-                    )}
-
-                    {!isLoading && previewUrl && isVideo && (
-                        <Box component="video" controls src={previewUrl} sx={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
-                    )}
-
-                    {!isLoading && previewUrl && isAudio && (
-                        <Box component="audio" controls src={previewUrl} sx={{ width: '100%', maxWidth: '400px', mx: 'auto' }} />
+                    {error && (
+                        <Typography color="error" variant="body1" align="center" sx={{ p: 2 }}>
+                            {error}
+                        </Typography>
                     )}
                     
-                    {!isLoading && previewUrl && isPdf && (
-                        <Box sx={{ width: '100%', height: '100%', bgcolor: '#525659' }}>
-                            <object
-                                data={previewUrl}
-                                type="application/pdf"
+                    {!isLoading && previewUrl && (
+                        <Box sx={{ width: '100%', height: '100%', flex: 1, display: 'flex', flexDirection: 'column', position: 'relative' }}>
+                            <FilePreviewEmbed 
+                                files={previewFiles}
+                                currentIndex={0}
+                                showClose={false}
+                                showDownload={false}
                                 width="100%"
                                 height="100%"
-                                style={{ border: 'none' }}
-                            >
-                                <iframe 
-                                    src={previewUrl} 
-                                    style={{ width: '100%', height: '100%', border: 'none' }} 
-                                    title={file.name}
-                                >
-                                    <p style={{ color: 'white', padding: '16px' }}>
-                                        Your browser does not support inline PDF rendering.{' '}
-                                        <a href={rawDownloadUrl || previewUrl} target="_blank" rel="noreferrer" style={{ color: '#90caf9' }}>
-                                            Click here to open PDF directly
-                                        </a>.
-                                    </p>
-                                </iframe>
-                            </object>
-                        </Box>
-                    )}
-
-                    {!isLoading && previewUrl && isDocViewerSupported && !isImage && !isPdf && (
-                        <Box sx={{ 
-                            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', bgcolor: '#ffffff', overflow: 'hidden',
-                            display: 'flex', flexDirection: 'column', flex: 1,
-                            '& #react-doc-viewer, & #react-doc-viewer *, & #msdoc-renderer, & #msdoc-iframe, & #ms-doc-renderer, & #ms-doc-iframe, & [id*="renderer"], & [id*="doc"], & iframe': { 
-                                height: '100% !important', 
-                                width: '100% !important', 
-                                minHeight: '100% !important', 
-                                border: 'none !important', 
-                                flex: '1 1 auto !important', 
-                                display: 'flex !important', 
-                                flexDirection: 'column !important',
-                                boxSizing: 'border-box !important'
-                            }
-                        }}>
-                            <DocViewer 
-                                documents={[{ 
-                                    uri: previewUrl, 
-                                    fileName: file.original_name || file.name,
-                                    fileType: (file.original_name || file.name).split('.').pop() 
-                                }]} 
-                                pluginRenderers={DocViewerRenderers}
-                                style={{ width: '100%', height: '100%', backgroundColor: '#ffffff' }}
-                                config={{
-                                    header: {
-                                        disableHeader: true
-                                    }
-                                }}
+                                theme="light"
+                                locale="en-US"
+                                onDownload={() => setIsPromptOpen(true)}
+                                style={{ width: '100%', height: '100%' }}
                             />
-                        </Box>
-                    )}
-                    
-                    {!isLoading && previewUrl && !isImage && !isPdf && !isVideo && !isAudio && !isDocViewerSupported && (
-                        <Box sx={{ textAlign: 'center', color: 'text.primary' }}>
-                            <Typography variant="h6" gutterBottom>
-                                Preview not available for this file type
-                            </Typography>
-                            <Button 
-                                variant="contained" 
-                                color="primary" 
-                                onClick={() => setIsPromptOpen(true)}
-                                sx={{ mt: 2 }}
-                            >
-                                Download File
-                            </Button>
                         </Box>
                     )}
                 </Box>
@@ -260,7 +189,7 @@ export default function FilePreviewModal({ isOpen, onClose, file }) {
                 onConfirm={triggerDownload}
                 title="Download File"
                 message="Enter a name for the downloaded file:"
-                defaultValue={file.original_name || file.name}
+                defaultValue={fileName}
                 confirmText="Download"
             />
         </Dialog>
