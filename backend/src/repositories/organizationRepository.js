@@ -121,9 +121,15 @@ class OrganizationRepository {
         return result.rows[0].max_organizations;
     }
 
-    // The plan a new organization should inherit: the most generous one this
-    // owner already holds, measured by total storage. An owner on Enterprise
-    // should not silently drop to Free when they create their second workspace.
+    // The configuration a new organization should inherit. An owner on
+    // Enterprise should not silently drop to Free when they create a second
+    // workspace.
+    //
+    // A licensed organization wins over an unlicensed one regardless of size.
+    // Licences carry the real entitlement; derived organizations merely copy it.
+    // Ranking by storage alone would let a derived organization become the
+    // source for the next one, so any inflation would compound with every
+    // workspace created.
     //
     // Returns undefined for an owner with no organization yet — their first one
     // comes from a licence, which carries its own configuration.
@@ -135,7 +141,9 @@ class OrganizationRepository {
                     gmt_location
              FROM organizations
              WHERE owner_id = $1
-             ORDER BY storage_limit_bytes DESC NULLS LAST, created_at ASC
+             ORDER BY (license_key IS NOT NULL) DESC,
+                      storage_limit_bytes DESC NULLS LAST,
+                      created_at ASC
              LIMIT 1`,
             [ownerId]
         );

@@ -144,18 +144,28 @@ class OrganizationService {
         if (!billingConfig.planName) {
             const inherited = await organizationRepository.findInheritablePlanForOwner(userId);
             if (inherited) {
-                // Prefer the tier's current values over the source organization's
-                // stored copy, so an admin's later edit to the tier is picked up.
+                // The source organization's own values win, not the tier's.
+                //
+                // A tier is only the preset an organization was stamped from; a
+                // Super Admin may have adjusted that organization since. Reading
+                // the tier instead would hand a child quotas its parent does not
+                // have — an owner capped at 5 GB by hand would find their next
+                // workspace holding the full 1 TB the Enterprise tier advertises.
+                //
+                // The tier remains the fallback for a column the source row left
+                // null.
                 const tier = await subscriptionTierService.getDefaultsFor(inherited.plan_name);
+                const pick = (fromOrg, fromTier) => (fromOrg ?? fromTier ?? undefined);
+
                 billingConfig = {
                     planName: inherited.plan_name,
-                    storageLimitBytes: tier?.storageLimitBytes ?? inherited.storage_limit_bytes,
-                    memberStorageLimitBytes: tier?.memberStorageLimitBytes ?? inherited.member_storage_limit_bytes,
-                    maxMembers: tier?.maxMembers ?? inherited.max_members,
-                    maxOrganizations: tier?.maxOrganizations ?? inherited.max_organizations,
-                    featureApprovalEnabled: tier?.featureApprovalEnabled ?? inherited.feature_approval_enabled,
-                    featureChatEnabled: tier?.featureChatEnabled ?? inherited.feature_chat_enabled,
-                    featureIntegrationEnabled: tier?.featureIntegrationEnabled ?? inherited.feature_integration_enabled,
+                    storageLimitBytes: pick(inherited.storage_limit_bytes, tier?.storageLimitBytes),
+                    memberStorageLimitBytes: pick(inherited.member_storage_limit_bytes, tier?.memberStorageLimitBytes),
+                    maxMembers: pick(inherited.max_members, tier?.maxMembers),
+                    maxOrganizations: pick(inherited.max_organizations, tier?.maxOrganizations),
+                    featureApprovalEnabled: pick(inherited.feature_approval_enabled, tier?.featureApprovalEnabled),
+                    featureChatEnabled: pick(inherited.feature_chat_enabled, tier?.featureChatEnabled),
+                    featureIntegrationEnabled: pick(inherited.feature_integration_enabled, tier?.featureIntegrationEnabled),
                     gmtLocation: inherited.gmt_location,
                     ...billingConfig
                 };
