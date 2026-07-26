@@ -58,13 +58,26 @@ Scoped to an organization.
 ### Data model
 
 ```
-crm_boards        (id, organization_id, name, created_by, …)
+crm_boards        (id, organization_id, name, visibility, created_by, …)
+crm_groups        (id, board_id, name, colour, position)
 crm_columns       (id, board_id, name, type, position, config JSONB)
-crm_rows          (id, board_id, position, created_by, …)
+crm_rows          (id, board_id, group_id, position, created_by, …)
 crm_cells         (row_id, column_id, value JSONB)
 crm_webhooks      (id, board_id, url, events[], secret, …)
 crm_webhook_deliveries (id, webhook_id, status, attempts, response, …)
+crm_row_dependencies   (predecessor_row_id, successor_row_id, type)  -- Gantt only
 ```
+
+**Groups are structure, not a view setting.** A board is a list of groups
+("To-Do", "Completed"), each holding ordered rows. That is different from
+"group by a column", which is a rendering choice applied to a flat list — a row
+belongs to exactly one group and stays there until moved. Modelling groups as a
+saved group-by would break as soon as a row's grouping column is empty, or two
+groups want the same status.
+
+Groups carry their own colour, ordering, collapse state, and per-group
+aggregation footers (sum, average, status distribution) computed over the rows
+inside them.
 
 **The cell storage model is the decision that is expensive to reverse.** A
 `crm_cells` row-per-value (EAV) keeps columns flexible but makes filtering and
@@ -74,20 +87,47 @@ document is the likely answer, but it must be settled before any UI is written.
 
 ### Column types
 
-Text · Long text · Number · Date · Timestamp · Time · Checkbox · Select ·
-Dropdown · Label · Pipeline · Checklist · File · Drive file reference · Formula
+Text · Long text · Number · Date · Timestamp · Time · **Timeline** · Checkbox ·
+Select · Dropdown · Label · Pipeline · **Person** · Checklist · File ·
+Drive file reference · Formula
 
 - **Drive file reference** points at an existing file in the Personal or Company
   Drive rather than uploading a copy. It must store the file id and resolve the
   URL at read time, so a moved or deleted file does not leave a dead link, and
   so drive permissions still apply.
 - **Pipeline** is a Select with ordered stages; Kanban groups by it.
+- **Timeline** holds a start and an end in one value, so the pair can be
+  validated together and dragged as a single bar. Two separate Date columns
+  cannot do either. Timeline and Gantt views read this column.
+- **Person** references an organization member. It must resolve through the
+  membership table, so someone removed from the organization stops appearing as
+  an assignee rather than lingering as a stale name.
 
 ### Views
 
-- Table (default)
-- Kanban, grouped by a Select/Pipeline column
-- Calendar, driven by a Date/Timestamp column
+- **Table** (default)
+- **Kanban**, grouped by a Select/Pipeline column
+- **Calendar**, driven by a Date/Timestamp column
+- **Card**, a gallery of rows rendered as cards — same data as Table, different
+  density. The cheapest view to add.
+- **Timeline**, rows laid out on a horizontal date axis. Needs a **Timeline**
+  column type holding a start and an end together, not two loose Date columns:
+  a pair of unrelated columns cannot be validated (end before start) or dragged
+  as one bar.
+- **Gantt**, Timeline plus dependencies between rows.
+
+Gantt is the only view that adds data, not just presentation. Dependencies mean
+a `crm_row_dependencies` table (predecessor, successor, type), and with it:
+
+- **Cycle detection.** A depends on B depends on A must be rejected at write
+  time, or rendering the chart never terminates. The same class of check the
+  role hierarchy already needs — see `roleHierarchyService.hasCycle`.
+- **A rescheduling rule.** When a predecessor moves, do successors shift with
+  it or merely show as violated? This is a product decision, and building the
+  drag interaction before answering it means rewriting it.
+
+Table, Card, Kanban, and Calendar are all one query with different rendering.
+Timeline and Gantt are not — treat them as a second phase.
 
 ### Formulas
 
@@ -116,6 +156,39 @@ Events: `row.created`, `row.updated`, `row.deleted`.
   noticing.
 - Delivery must not run inside the request that triggered it.
 
+### Board templates
+
+Predefined boards a user can start from — groups, columns, and their config,
+without rows.
+
+- Platform templates ship with the product; an organization can also save one of
+  its own boards as a template for reuse.
+- A template is a snapshot, not a link. Editing the template must not reach into
+  boards already created from it, and a board created from a template must keep
+  working after the template is deleted.
+- Templates referencing a Person column cannot carry the people — those resolve
+  to nobody in a different organization.
+
+### Toolbar and table behaviour
+
+Visible in the reference UI and worth listing so they are not discovered as
+"missing" late: search, filter, sort, hide columns, group by, pin columns, item
+height, conditional colouring, default values for new rows, and per-group
+aggregation footers.
+
+Conditional colouring and default values are stored per board, so they belong in
+the board config rather than in each user's local state — two people looking at
+the same board should see the same colours.
+
+### AI suggestions
+
+Suggested rows, column values, or next actions, offered in-board.
+
+**Blocked by the same unresolved decision as section A** — provider, cost model,
+and whether customer content may leave the platform. AI suggestions read the
+board's live data, which is customer data, so it cannot ship before that is
+settled. Everything else in B can.
+
 ### Import / export
 
 - Export: CSV and XLSX, current view and filters applied.
@@ -123,6 +196,39 @@ Events: `row.created`, `row.updated`, `row.deleted`.
   Silent partial imports are the usual failure here — report per-row errors
   rather than aborting or half-writing.
 - Bulk delete and bulk export over the current selection.
+
+### Sharing
+
+Share a board by link, and invite by link, the way the drive already does.
+Reuse the existing share mechanism rather than building a second one — the
+`shares` table, token generation, and the `/s/:token` public route all exist,
+and password-protected links were already designed in
+[superpowers/specs/2026-07-24-share-link-password-design.md](superpowers/specs/2026-07-24-share-link-password-design.md).
+
+**Required on every board link: a password option and an expiry.** Both are
+decided, not optional extras. A board link exposes far more than a single file —
+every row, every column, and whatever the Person and Drive-reference columns
+resolve to — so a link that never expires and asks for nothing is a standing
+leak of the whole board. Revocation is needed alongside them: expiry handles
+the link nobody remembered, revocation handles the one that was sent to the
+wrong person five minutes ago.
+
+Three things a board share needs that a file share does not:
+
+- **A link bypasses the role-subtree rule.** That is what a link is for, but it
+  means the board's visibility setting no longer governs who reads it. Sharing
+  must be an explicit act, not a checkbox that quietly turns a restricted board
+  public.
+- **A shared board leaks its columns' references.** Person columns carry
+  members' names and emails; Drive file references resolve to organization
+  files. A public view has to redact or refuse those, or a link handed to an
+  outsider hands over the member directory with it.
+- **Invite-by-link adds a member to the organization**, so it must run through
+  the same hierarchy rule as `inviteMember` — a link cannot grant a role its
+  creator could not assign directly.
+
+Read-only and comment-only link modes are the obvious split; editable links
+should wait until the redaction question above is answered.
 
 ### Permissions
 
@@ -164,10 +270,29 @@ A sidebar entry rendering analytics over CRM data.
 large imports and exports all need work that outlives a request. Adding it once,
 first, is cheaper than three ad-hoc `setTimeout` implementations.
 
-**Billing.** CRM and Reporting are billable surfaces, and **CRM storage is
-quota'd through the Billing service** (decided). Both follow the pattern already
-in place for Integration: columns on `organizations`, `org_licenses`, and
-`subscription_tiers`, enforced server-side and not merely hidden in the sidebar.
+**Billing.** Decided: **every CRM capability is configurable per organization
+through the Billing service**, not just CRM as a whole. Follows the pattern
+already in place for Integration — columns on `organizations`, `org_licenses`,
+and `subscription_tiers`, enforced server-side and not merely hidden in the UI.
+
+Individually switchable, so a tier can sell a subset:
+
+| | |
+|---|---|
+| `crm_enabled` | the module at all |
+| `crm_max_boards`, `crm_max_rows` | quotas |
+| `crm_views_enabled` | which views — Gantt and Timeline are the natural premium ones |
+| `crm_formulas_enabled` | formula columns |
+| `crm_webhooks_enabled` | outbound webhooks |
+| `crm_ai_enabled` | AI suggestions |
+| `crm_import_export_enabled` | CSV/XLSX in and out |
+| `crm_public_sharing_enabled` | share and invite by link |
+| `reporting_enabled` | section C |
+
+That is a lot of flags. Store them as one `crm_features JSONB` column rather
+than a dozen boolean columns across three tables, or every new capability
+becomes another migration on `organizations`, `org_licenses`, and
+`subscription_tiers` at once.
 
 Settle whether the CRM quota counts rows, the bytes of attached files, or both.
 Attached files already consume drive storage, so counting them again would

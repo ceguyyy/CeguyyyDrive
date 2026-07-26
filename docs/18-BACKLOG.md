@@ -6,8 +6,10 @@ Three products, recorded in [24-NEXT-IMPLEMENTATION.md](24-NEXT-IMPLEMENTATION.m
 Build order matters — Reporting has nothing to report on until CRM exists.
 
 - [ ] **A. AI Summary** — per file, folder, and metadata. Independent of B and C.
-- [ ] **B. CRM** — boards, columns, rows, kanban/calendar views, formulas,
-      webhooks, CSV/XLSX import and export. The largest piece.
+- [ ] **B. CRM** — boards, groups, columns, rows; table/card/kanban/calendar
+      views, then timeline/gantt; formulas, webhooks, templates, AI suggestions,
+      CSV/XLSX import and export. Every capability billable individually.
+      The largest piece.
 - [ ] **C. Reporting** — widgets, charts, pivots, PDF analytics. **Depends on B.**
 - [ ] **Prerequisite: a job queue.** None exists. AI summarisation, webhook
       delivery, and bulk import/export all need it.
