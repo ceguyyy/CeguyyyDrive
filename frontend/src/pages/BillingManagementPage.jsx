@@ -98,6 +98,12 @@ export default function BillingManagementPage() {
     // Modal state for Editing Org
     const [editOrgModal, setEditOrgModal] = useState(false);
     const [selectedOrg, setSelectedOrg] = useState(null);
+
+    // An organization redeemed from a licence carries its own entitlement; one
+    // the owner created afterwards inherits it. Editing quotas on the derived
+    // one would be misleading — the inherited values are recomputed from the
+    // plan whenever another organization is created.
+    const isInheritedOrg = selectedOrg ? selectedOrg.is_licensed === false : false;
     const [editPlanType, setEditPlanType] = useState('Pro');
     const [editStorageGB, setEditStorageGB] = useState(100);
     const [editMaxMembers, setEditMaxMembers] = useState(25);
@@ -1170,6 +1176,17 @@ export default function BillingManagementPage() {
                             </Box>
                         </Box>
 
+                        {isInheritedOrg && (
+                            <Alert severity="info" sx={{ mb: 2 }}>
+                                <strong>{selectedOrg?.name}</strong> was created by its owner rather than from a
+                                licence key, so its quotas follow the licensed organization on the{' '}
+                                <strong>{selectedOrg?.plan_name}</strong> plan. Edit that organization, or the{' '}
+                                <strong>{selectedOrg?.plan_name}</strong> tier, to change these.
+                                {' '}The owner may hold <strong>{selectedOrg?.owner_max_organizations}</strong>{' '}
+                                organizations in total — a shared cap, not one per workspace.
+                            </Alert>
+                        )}
+
                         <Grid container spacing={1.5} sx={{ mb: 3 }}>
                             <Grid item xs={12} sm={4}>
                                 <TextField
@@ -1177,6 +1194,7 @@ export default function BillingManagementPage() {
                                     type="number"
                                     fullWidth
                                     size="small"
+                                    disabled={isInheritedOrg}
                                     value={editStorageGB}
                                     onChange={(e) => setEditStorageGB(e.target.value)}
                                 />
@@ -1187,6 +1205,7 @@ export default function BillingManagementPage() {
                                     type="number"
                                     fullWidth
                                     size="small"
+                                    disabled={isInheritedOrg}
                                     value={editMaxMembers}
                                     onChange={(e) => setEditMaxMembers(e.target.value)}
                                 />
@@ -1197,7 +1216,8 @@ export default function BillingManagementPage() {
                                     type="number"
                                     fullWidth
                                     size="small"
-                                    helperText="Orgs this owner may create"
+                                    disabled={isInheritedOrg}
+                                    helperText={isInheritedOrg ? 'Inherited — shared across this owner' : 'Orgs this owner may create'}
                                     value={editMaxOrgs}
                                     onChange={(e) => setEditMaxOrgs(e.target.value)}
                                 />
@@ -1208,6 +1228,7 @@ export default function BillingManagementPage() {
                                     type="number"
                                     fullWidth
                                     size="small"
+                                    disabled={isInheritedOrg}
                                     value={editMemberStorageGB}
                                     onChange={(e) => setEditMemberStorageGB(e.target.value)}
                                 />

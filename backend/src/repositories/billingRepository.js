@@ -63,8 +63,15 @@ class BillingRepository {
 
     async findAllOrganizations() {
         const result = await db.query(
-            `SELECT o.*, 
+            `SELECT o.*,
                     u.email as owner_email, u.full_name as owner_name,
+                    -- An organization born from a licence carries its own
+                    -- entitlement; one created afterwards inherits the owner's.
+                    (o.license_key IS NOT NULL) as is_licensed,
+                    -- The cap actually enforced for this owner, which is the
+                    -- greatest across everything they own, not this row alone.
+                    (SELECT MAX(x.max_organizations) FROM organizations x
+                      WHERE x.owner_id = o.owner_id) as owner_max_organizations,
                     (SELECT COUNT(*)::int FROM organization_members WHERE organization_id = o.id AND status = 'accepted') as member_count,
                     COALESCE((
                         SELECT SUM(f.size)::bigint FROM files f
