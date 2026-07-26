@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link as RouterLink } from 'react-router-dom';
 import {
     Container, Paper, Typography, TextField, Button, Box, Alert, Link, Stack,
     InputAdornment, IconButton
@@ -19,8 +19,15 @@ const MIN_PASSWORD_LENGTH = 8;
 export default function ForgotPassword() {
     const navigate = useNavigate();
 
+    // Profile Settings links here as /forgot-password?email=<address> so a
+    // signed-in user who cannot recall their current password does not have to
+    // retype it. The code still goes to the mailbox, so this prefill grants
+    // nothing on its own.
+    const [searchParams] = useSearchParams();
+    const prefilledEmail = searchParams.get('email') || '';
+
     const [step, setStep] = useState('request');
-    const [email, setEmail] = useState('');
+    const [email, setEmail] = useState(prefilledEmail);
     const [otpCode, setOtpCode] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);

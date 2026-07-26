@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import api from '../../services/api';
 import axios from 'axios';
@@ -18,6 +19,7 @@ import {
 export default function ProfileModal({ isOpen, onClose }) {
     const { user, fetchMe, activeOrgId, setActiveOrgId } = useAuthStore();
     const queryClient = useQueryClient();
+    const navigate = useNavigate();
 
     const { data: orgsData } = useQuery({
         queryKey: ['organizations'],
@@ -105,6 +107,14 @@ export default function ProfileModal({ isOpen, onClose }) {
         } finally {
             setLoadingProfile(false);
         }
+    };
+
+    // Closing first matters: the modal renders over the app, and leaving it open
+    // would hide the page we just navigated to.
+    const handleForgotPassword = () => {
+        const address = (email || user?.email || '').trim();
+        onClose();
+        navigate(address ? `/forgot-password?email=${encodeURIComponent(address)}` : '/forgot-password');
     };
 
     const handleUpdatePassword = async () => {
@@ -256,6 +266,17 @@ export default function ProfileModal({ isOpen, onClose }) {
                         onClick={handleUpdatePassword}
                     >
                         Update Password
+                    </Button>
+                    {/* For someone who cannot supply their current password.
+                        Prefills the address and lets them send the code from the
+                        reset page, rather than firing an email off a stray click. */}
+                    <Button
+                        variant="text"
+                        size="small"
+                        sx={{ textTransform: 'none', alignSelf: 'center' }}
+                        onClick={handleForgotPassword}
+                    >
+                        Forgot your current password?
                     </Button>
                 </Box>
             </DialogContent>
