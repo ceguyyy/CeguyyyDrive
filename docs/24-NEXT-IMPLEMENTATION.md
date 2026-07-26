@@ -66,6 +66,7 @@ crm_cells         (row_id, column_id, value JSONB)
 crm_webhooks      (id, board_id, url, events[], secret, …)
 crm_webhook_deliveries (id, webhook_id, status, attempts, response, …)
 crm_row_dependencies   (predecessor_row_id, successor_row_id, type)  -- Gantt only
+crm_row_links     (id, source_row_id, target_row_id, relation_column_id)
 ```
 
 **Groups are structure, not a view setting.** A board is a list of groups
@@ -89,7 +90,7 @@ document is the likely answer, but it must be settled before any UI is written.
 
 Text · Long text · Number · Date · Timestamp · Time · **Timeline** · Checkbox ·
 Select · Dropdown · Label · Pipeline · **Person** · Checklist · File ·
-Drive file reference · Formula
+Drive file reference · Formula · **Relation** · **Lookup** · **Rollup**
 
 - **Drive file reference** points at an existing file in the Personal or Company
   Drive rather than uploading a copy. It must store the file id and resolve the
@@ -102,6 +103,47 @@ Drive file reference · Formula
 - **Person** references an organization member. It must resolve through the
   membership table, so someone removed from the organization stops appearing as
   an assignee rather than lingering as a stale name.
+
+### Cross-board relations
+
+Pull data from one board into another: link a row to rows in another board, then
+display or aggregate their values.
+
+Three column types, and they are not interchangeable:
+
+- **Relation** — stores links to rows in another board. The only one that holds
+  data; the other two derive from it.
+- **Lookup** — displays a column from the linked rows. Read-only.
+- **Rollup** — aggregates over the linked rows (sum, count, min, max).
+
+```
+crm_row_links (id, source_row_id, target_row_id, relation_column_id)
+```
+
+**The permission question is the one to get right first.** A Lookup shows values
+from a board the viewer may have no access to — a Staff member could otherwise
+read a restricted board's contents through a Relation someone else configured.
+Resolve permissions against the *source* board at read time, per viewer, and
+return a redacted placeholder rather than the value when it fails. Checking only
+the board being viewed is the obvious implementation and the wrong one.
+
+Also needed:
+
+- **Same-organization only.** A Relation must never cross organizations, or one
+  customer's board becomes readable from another's.
+- **Deletion behaviour.** What a link does when its target row or board is
+  deleted — dangle, null out, or block the delete. Answer before shipping, not
+  after the first support ticket.
+- **Batched reads.** A board with lookups turns one query into one per row
+  unless links are fetched in a single pass. This is where a naive
+  implementation stops being usable at a few hundred rows.
+- **Rollups interact with formulas.** A formula referencing a rollup referencing
+  a formula is a cycle across boards, which the existing per-board cycle check
+  will not catch.
+
+This also raises the stakes on the still-open cell storage decision: lookups and
+rollups need to filter and sort on values that live in another board's rows,
+which a per-row JSONB blob makes considerably harder than an indexed EAV table.
 
 ### Views
 
@@ -345,6 +387,13 @@ overstate usage.
 1. **Cell storage: JSONB per row, or EAV?** Unanswered, and still the most
    expensive to reverse — everything in B is built on it. Settle before any
    code.
+
+   Cross-board Lookups and Rollups raise the stakes: they filter and sort on
+   values living in another board's rows, which an indexed EAV table serves far
+   more naturally than a per-row JSONB document.
+
+   Also undecided within it: what a Relation does when its target row or board
+   is deleted.
 2. **AI provider, cost model, and whether customer content may leave the
    platform.** Marked TBD. This is a legal and commercial decision before a
    technical one, and it determines whether section A is viable at all.
