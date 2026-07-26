@@ -2,7 +2,6 @@ const crypto = require('crypto');
 const apiKeyRepository = require('../repositories/apiKeyRepository');
 const organizationRepository = require('../repositories/organizationRepository');
 const AppError = require('../utils/AppError');
-const { isSuperAdminRole } = require('../config/platformRoles');
 
 const KEY_PREFIX = 'cgd';
 const SECRET_BYTES = 32;
@@ -30,26 +29,30 @@ const VALID_SCOPES = [
 const sha256 = (value) => crypto.createHash('sha256').update(value).digest('hex');
 
 class ApiKeyService {
-    // The organization owner, or a platform Super Admin operating on their
-    // behalf. A key grants drive access to whoever holds it, so issuing one is
-    // never delegated down the role hierarchy — a Manager cannot mint one.
-    async assertCanManageKeys(orgId, userId, actorRoleName) {
+    // The organization owner, and nobody else.
+    //
+    // Not delegated down the role hierarchy — a Manager cannot mint a key — and
+    // deliberately not extended to Super Admins either. A key grants standing
+    // access to an organization's files, so being able to operate the platform
+    // is not the same as being entitled to read a customer's drive. A Super
+    // Admin who needs one issues it for an organization they actually own.
+    async assertCanManageKeys(orgId, userId) {
         const org = await organizationRepository.findOrganizationById(orgId);
         if (!org) throw new AppError('Organization not found', 404);
 
-        if (org.owner_id !== userId && !isSuperAdminRole(actorRoleName)) {
+        if (org.owner_id !== userId) {
             throw new AppError('Only the organization owner can manage API keys.', 403);
         }
         return org;
     }
 
-    async listKeys(orgId, userId, actorRoleName) {
-        await this.assertCanManageKeys(orgId, userId, actorRoleName);
+    async listKeys(orgId, userId) {
+        await this.assertCanManageKeys(orgId, userId);
         return await apiKeyRepository.findByOrganization(orgId);
     }
 
-    async createKey(orgId, userId, { name, scopes, expiresInDays } = {}, actorRoleName = null) {
-        await this.assertCanManageKeys(orgId, userId, actorRoleName);
+    async createKey(orgId, userId, { name, scopes, expiresInDays } = {}) {
+        await this.assertCanManageKeys(orgId, userId);
 
         const label = String(name || '').trim();
         if (!label) throw new AppError('Give the key a name so you can recognise it later.', 400);
@@ -149,8 +152,8 @@ class ApiKeyService {
         return { fullKey: `${KEY_PREFIX}_${publicId}_${secret}`, keyPrefix: `${KEY_PREFIX}_${publicId}` };
     }
 
-    async revokeKey(orgId, userId, keyId, actorRoleName = null) {
-        await this.assertCanManageKeys(orgId, userId, actorRoleName);
+    async revokeKey(orgId, userId, keyId) {
+        await this.assertCanManageKeys(orgId, userId);
         const revoked = await apiKeyRepository.revoke(orgId, keyId);
         if (!revoked) throw new AppError('API key not found, or already revoked.', 404);
         return revoked;

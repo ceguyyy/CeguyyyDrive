@@ -3,6 +3,7 @@ const AppError = require('../utils/AppError');
 const plunkService = require('./plunkService');
 const cosService = require('./cosService');
 const { getDescendantNames, hasCycle, findScopeViolations } = require('./roleHierarchyService');
+const subscriptionTierService = require('./subscriptionTierService');
 const {
     isSuperAdminRole,
     isUnlimitedOrganizations,
@@ -134,15 +135,42 @@ class OrganizationService {
             throw new AppError('Organization name is required', 400);
         }
 
+        // An owner's second workspace inherits the plan they already hold. Without
+        // this the repository defaults apply and someone on Enterprise silently
+        // lands on Free, 5 GB, 5 members.
+        //
+        // Skipped when the caller passed an explicit plan — licence redemption
+        // supplies its own configuration and must not be overridden.
+        if (!billingConfig.planName) {
+            const inherited = await organizationRepository.findInheritablePlanForOwner(userId);
+            if (inherited) {
+                // Prefer the tier's current values over the source organization's
+                // stored copy, so an admin's later edit to the tier is picked up.
+                const tier = await subscriptionTierService.getDefaultsFor(inherited.plan_name);
+                billingConfig = {
+                    planName: inherited.plan_name,
+                    storageLimitBytes: tier?.storageLimitBytes ?? inherited.storage_limit_bytes,
+                    memberStorageLimitBytes: tier?.memberStorageLimitBytes ?? inherited.member_storage_limit_bytes,
+                    maxMembers: tier?.maxMembers ?? inherited.max_members,
+                    maxOrganizations: tier?.maxOrganizations ?? inherited.max_organizations,
+                    featureApprovalEnabled: tier?.featureApprovalEnabled ?? inherited.feature_approval_enabled,
+                    featureChatEnabled: tier?.featureChatEnabled ?? inherited.feature_chat_enabled,
+                    featureIntegrationEnabled: tier?.featureIntegrationEnabled ?? inherited.feature_integration_enabled,
+                    gmtLocation: inherited.gmt_location,
+                    ...billingConfig
+                };
+            }
+        }
+
         // A Super Admin operates the platform rather than consuming it: no
         // organization cap, and every feature switched on.
         const isSuperAdmin = isSuperAdminRole(actorRoleName);
         if (isSuperAdmin) {
             billingConfig = {
+                ...billingConfig,
                 featureApprovalEnabled: true,
                 featureChatEnabled: true,
-                maxOrganizations: UNLIMITED_ORGANIZATIONS,
-                ...billingConfig
+                maxOrganizations: UNLIMITED_ORGANIZATIONS
             };
         }
 

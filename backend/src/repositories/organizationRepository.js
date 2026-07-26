@@ -12,6 +12,9 @@ class OrganizationRepository {
             memberStorageLimitBytes = 5368709120, // 5 GB default per member
             featureApprovalEnabled = true,
             featureChatEnabled = true,
+            // Off unless asked for: Integration exposes an API surface, so a new
+            // organization does not gain one by omission.
+            featureIntegrationEnabled = false,
             maxOrganizations = null,
             gmtLocation = 'GMT+7 (Asia/Jakarta)'
         } = billingConfig;
@@ -28,9 +31,10 @@ class OrganizationRepository {
             const orgRes = await client.query(
                 `INSERT INTO organizations (
                     name, owner_id, license_key, plan_name, storage_limit_bytes, max_members, member_storage_limit_bytes,
-                    feature_approval_enabled, feature_chat_enabled, max_organizations, gmt_location, status
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'active') RETURNING *`,
-                [name, ownerId, licenseKey, planName, storageLimitBytes, maxMembers, memberStorageLimitBytes, featureApprovalEnabled, featureChatEnabled, resolvedMaxOrganizations, gmtLocation]
+                    feature_approval_enabled, feature_chat_enabled, feature_integration_enabled,
+                    max_organizations, gmt_location, status
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'active') RETURNING *`,
+                [name, ownerId, licenseKey, planName, storageLimitBytes, maxMembers, memberStorageLimitBytes, featureApprovalEnabled, featureChatEnabled, featureIntegrationEnabled, resolvedMaxOrganizations, gmtLocation]
             );
             const org = orgRes.rows[0];
 
@@ -115,6 +119,27 @@ class OrganizationRepository {
             [ownerId, MAX_ORGANIZATIONS_WITHOUT_PLAN]
         );
         return result.rows[0].max_organizations;
+    }
+
+    // The plan a new organization should inherit: the most generous one this
+    // owner already holds, measured by total storage. An owner on Enterprise
+    // should not silently drop to Free when they create their second workspace.
+    //
+    // Returns undefined for an owner with no organization yet — their first one
+    // comes from a licence, which carries its own configuration.
+    async findInheritablePlanForOwner(ownerId) {
+        const result = await db.query(
+            `SELECT plan_name, storage_limit_bytes, member_storage_limit_bytes,
+                    max_members, max_organizations,
+                    feature_approval_enabled, feature_chat_enabled, feature_integration_enabled,
+                    gmt_location
+             FROM organizations
+             WHERE owner_id = $1
+             ORDER BY storage_limit_bytes DESC NULLS LAST, created_at ASC
+             LIMIT 1`,
+            [ownerId]
+        );
+        return result.rows[0];
     }
 
     async addMember(orgId, email, roleName = 'Member', targetUserId = null) {

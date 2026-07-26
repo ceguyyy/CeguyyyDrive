@@ -141,20 +141,10 @@ export default function IntegrationPage() {
         }
     });
 
-    // A Super Admin administers the platform, so they can pick any organization,
-    // not only the ones they happen to be a member of.
-    const { data: allOrgsData } = useQuery({
-        queryKey: ['billing-organizations'],
-        queryFn: async () => {
-            const res = await api.get('/billing/organizations');
-            return res.data.data.organizations;
-        },
-        enabled: superAdmin
-    });
-
-    const selectableOrgs = superAdmin
-        ? (allOrgsData ?? orgsData?.organizations ?? [])
-        : (orgsData?.organizations ?? []);
+    // Only organizations this user actually belongs to — a Super Admin included.
+    // Operating the platform is not the same as being entitled to a customer's
+    // drive, and apiKeyService.assertCanManageKeys enforces the same boundary.
+    const selectableOrgs = orgsData?.organizations ?? [];
 
     // Local to this page on purpose: switching the target here must not move the
     // whole app's drive context the way the Profile Settings switcher does.
@@ -166,8 +156,9 @@ export default function IntegrationPage() {
 
     // A personal key needs no owner check and no billing feature: it reaches
     // nothing but the caller's own drive.
-    // For organizations this mirrors apiKeyService.assertCanManageKeys.
-    const canManage = isPersonalTarget || activeOrg?.owner_id === user?.id || superAdmin;
+    // For organizations this mirrors apiKeyService.assertCanManageKeys — owner
+    // only, with no Super Admin exception.
+    const canManage = isPersonalTarget || activeOrg?.owner_id === user?.id;
     const featureEnabled = isPersonalTarget || activeOrg?.feature_integration_enabled === true;
 
     const targetLabel = isPersonalTarget ? 'My Personal Drive' : activeOrg?.name;
@@ -253,9 +244,9 @@ export default function IntegrationPage() {
         );
     }
 
-    // A Super Admin still reaches the page with the feature off — they are the
-    // one who turns it on — but keys they mint stay rejected until they do, so
-    // the state is stated plainly rather than hidden.
+    // A Super Admin still reaches the page for their OWN organizations with the
+    // feature off — they are the one who turns it on — but keys they mint stay
+    // rejected until they do, so the state is stated plainly rather than hidden.
     if (!featureEnabled && !superAdmin) {
         return (
             <Box sx={{ p: 4 }}>
@@ -289,7 +280,7 @@ export default function IntegrationPage() {
                 helperText={
                     isPersonalTarget
                         ? 'Personal keys reach only your own drive — no organization endpoints.'
-                        : (superAdmin ? 'As a platform admin you can manage any organization.' : ' ')
+                        : 'Only organizations you own can hold API keys.'
                 }
             >
                     <MenuItem value={PERSONAL_TARGET}>My Personal Drive</MenuItem>
