@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useNavigate, useSearchParams, Link as RouterLink } from 'react-router-dom';
 import {
     Container, Paper, Typography, TextField, Button, Box, Alert, Link, Stack,
@@ -7,6 +7,7 @@ import {
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import api from '../services/api';
 import CloudLogo from '../components/ui/CloudLogo';
+import { runCaptcha } from '../utils/captcha';
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -35,42 +36,22 @@ export default function ForgotPassword() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
     const [notice, setNotice] = useState('');
-    const captchaRef = useRef(null);
 
-    // This endpoint sends mail to an address the caller supplies, so it is
-    // exactly what a bot would abuse. The captcha runs before the request; the
-    // server verifies the ticket independently.
-    const requestCode = (event) => {
+    // This endpoint mails an address the caller supplies, so it is exactly what
+    // a bot would abuse — and the server verifies the ticket for real.
+    //
+    // A failed challenge therefore stops here. Sending anyway, ticketless, only
+    // produced a guaranteed 400 that read to the user as "the email never
+    // arrived" rather than "the captcha did not run".
+    const requestCode = async (event) => {
         event.preventDefault();
         setError('');
 
-        const appId = String(import.meta.env.VITE_CAPTCHA_APP_ID || '');
-        if (!window.TencentCaptcha || !appId) {
-            // Captcha script or app id unavailable — the server still decides
-            // whether a ticket was required.
-            sendRequest();
-            return;
-        }
-
         try {
-            const container = document.getElementById('forgot-captcha-container');
-            if (container) container.innerHTML = '';
-            if (captchaRef.current?.destroy) {
-                try { captchaRef.current.destroy(); } catch { /* already gone */ }
-            }
-
-            const captcha = new window.TencentCaptcha(container, appId, (res) => {
-                if (res.ret === 0) {
-                    sendRequest({ ticket: res.ticket, randstr: res.randstr });
-                } else {
-                    setError('Captcha verification was cancelled.');
-                }
-            }, {});
-
-            captchaRef.current = captcha;
-            captcha.show();
-        } catch {
-            sendRequest();
+            const { ticket, randstr } = await runCaptcha('forgot-captcha-container');
+            await sendRequest({ ticket, randstr });
+        } catch (err) {
+            setError(err.message);
         }
     };
 

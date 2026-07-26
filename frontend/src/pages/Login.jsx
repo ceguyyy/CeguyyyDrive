@@ -8,6 +8,7 @@ import { useAuthStore } from '../store/authStore';
 import { Container, Paper, Typography, TextField, Button, Box, Alert, Link } from '@mui/material';
 
 import CloudLogo from '../components/ui/CloudLogo';
+import { runCaptcha } from '../utils/captcha';
 
 const schema = z.object({
     email: z.string().email("Invalid email address"),
@@ -30,42 +31,24 @@ export default function Login() {
     });
     
     const dataRef = React.useRef(null);
-    const captchaRef = React.useRef(null);
 
-    const onSubmit = (data) => {
+    const onSubmit = async (data) => {
         dataRef.current = data;
-        const appId = String(import.meta.env.VITE_CAPTCHA_APP_ID || '209214731');
-        if (!window.TencentCaptcha) {
-            console.warn("Captcha script not loaded, proceeding with direct login fallback.");
-            executeLogin(data);
-            return;
-        }
 
+        // The app id comes from utils/captcha, which reads it from the
+        // environment and has no fallback. This page previously hardcoded a
+        // different id, so when VITE_CAPTCHA_APP_ID was absent it issued tickets
+        // for the wrong application — harmless here, because login does not
+        // verify server-side, but it broke password reset, which does.
         try {
-            const container = document.getElementById('captcha-container');
-            if (container) container.innerHTML = ''; // Clear previous captcha instances
-            
-            if (captchaRef.current && captchaRef.current.destroy) {
-                try { captchaRef.current.destroy(); } catch(e) {}
-            }
-
-            const captcha = new window.TencentCaptcha(container, appId, async (res) => {
-                if (res.ret === 0) {
-                    await executeLogin({
-                        ...data,
-                        ticket: res.ticket,
-                        randstr: res.randstr
-                    });
-                } else {
-                    setServerError('Captcha verification was canceled or failed.');
-                }
-            }, {});
-            
-            captchaRef.current = captcha;
-            captcha.show();
-        } catch (e) {
-            console.error("TencentCaptcha init error:", e);
-            executeLogin(data);
+            const { ticket, randstr } = await runCaptcha('captcha-container');
+            await executeLogin({ ...data, ticket, randstr });
+        } catch (err) {
+            // Login still proceeds without a ticket. The server does not verify
+            // this one (see the note in authController), so refusing here would
+            // lock everyone out over a blocked script without adding security.
+            console.warn('Captcha unavailable, continuing without a ticket:', err.message);
+            await executeLogin(data);
         }
     };
 

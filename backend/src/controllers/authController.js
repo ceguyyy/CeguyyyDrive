@@ -58,12 +58,18 @@ async function assertCaptcha(req, ticket, randstr) {
         return;
     }
 
+    if (!ticket || !randstr) {
+        throw new AppError('Captcha is required. Complete the challenge and try again.', 400);
+    }
+
     const result = await captchaService.verifyCaptcha(ticket, randstr, req.ip);
     if (result !== true) {
-        throw new AppError(
-            typeof result === 'string' ? result : 'Captcha verification failed. Please try again.',
-            400
-        );
+        // The provider's own text is diagnostic, not user-facing — "decrypt
+        // fail. For details, see the documentation of DescribeCaptchaResult
+        // API" tells the user nothing and leaks how verification works. Logged
+        // for us, replaced for them.
+        logger.warn(`Captcha rejected a password reset request: ${result}`);
+        throw new AppError('Captcha verification failed. Complete the challenge again.', 400);
     }
 }
 
