@@ -223,10 +223,18 @@ class BillingService {
         if (!updated) {
             throw new AppError('Organization not found', 404);
         }
+
+        // Derived organizations copy their quotas from the licensed one. Without
+        // this they would only match at the moment they were created, and the
+        // console's claim that they "follow the licensed organization" would be
+        // true only until the first edit. A no-op for a derived organization —
+        // the query requires the source to hold a licence.
+        const propagatedTo = await billingRepository.propagateQuotasToDerived(orgId);
+
         if (updated.custom_logo_url) {
             updated.custom_logo_url = await cosService.resolvePublicUrl(updated.custom_logo_url);
         }
-        return updated;
+        return { ...updated, propagated_to: propagatedTo };
     }
 
     async updateOrganizationStatus(orgId, status) {

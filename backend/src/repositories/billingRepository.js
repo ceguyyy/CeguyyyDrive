@@ -107,6 +107,34 @@ class BillingRepository {
         return result.rows[0];
     }
 
+    /**
+     * Pushes a licensed organization's quotas onto the derived ones its owner
+     * created, so the Billing Console's promise that they "follow the licensed
+     * organization" holds after an edit and not only at creation.
+     *
+     * Only quotas travel. Feature toggles stay per-organization because the
+     * console leaves those editable on a derived row, and overwriting them here
+     * would silently undo a deliberate choice.
+     */
+    async propagateQuotasToDerived(parentOrgId) {
+        const result = await db.query(
+            `UPDATE organizations child
+             SET plan_name = parent.plan_name,
+                 storage_limit_bytes = parent.storage_limit_bytes,
+                 member_storage_limit_bytes = parent.member_storage_limit_bytes,
+                 max_members = parent.max_members,
+                 max_organizations = parent.max_organizations
+             FROM organizations parent
+             WHERE parent.id = $1
+               AND parent.license_key IS NOT NULL
+               AND child.owner_id = parent.owner_id
+               AND child.license_key IS NULL
+             RETURNING child.id, child.name`,
+            [parentOrgId]
+        );
+        return result.rows;
+    }
+
     async updateOrganizationStatus(orgId, status) {
         const result = await db.query(
             `UPDATE organizations SET status = $2 WHERE id = $1 RETURNING *`,

@@ -104,6 +104,14 @@ export default function BillingManagementPage() {
     // one would be misleading — the inherited values are recomputed from the
     // plan whenever another organization is created.
     const isInheritedOrg = selectedOrg ? selectedOrg.is_licensed === false : false;
+
+    // billingService rejects a per-member cap above the organization's total,
+    // which leaves an already-inconsistent organization unsaveable until one of
+    // the two is corrected. Surfaced before submitting rather than as a 400.
+    const memberCapExceedsTotal =
+        Number(editMemberStorageGB) > 0
+        && Number(editStorageGB) > 0
+        && Number(editMemberStorageGB) > Number(editStorageGB);
     const [editPlanType, setEditPlanType] = useState('Pro');
     const [editStorageGB, setEditStorageGB] = useState(100);
     const [editMaxMembers, setEditMaxMembers] = useState(25);
@@ -263,7 +271,7 @@ export default function BillingManagementPage() {
         setError('');
         setSuccessMsg('');
         try {
-            await api.put(`/billing/organizations/${selectedOrg.id}`, {
+            const res = await api.put(`/billing/organizations/${selectedOrg.id}`, {
                 plan_name: editPlanType,
                 storage_limit_gb: Number(editStorageGB),
                 max_members: Number(editMaxMembers),
@@ -277,7 +285,12 @@ export default function BillingManagementPage() {
                 feature_integration_enabled: editIntegration,
                 admin_notes: editNotes
             });
-            setSuccessMsg(`Successfully updated quotas & features for ${selectedOrg.name}!`);
+            const propagated = res.data?.data?.organization?.propagated_to ?? [];
+            setSuccessMsg(
+                propagated.length > 0
+                    ? `Updated ${selectedOrg.name}, and applied the same quotas to ${propagated.length} organization(s) that inherit from it: ${propagated.map(o => o.name).join(', ')}.`
+                    : `Successfully updated quotas & features for ${selectedOrg.name}!`
+            );
             setEditOrgModal(false);
             fetchData();
             queryClient.invalidateQueries(['organizations']);
@@ -1065,6 +1078,21 @@ export default function BillingManagementPage() {
                     Edit Quotas & Features: {selectedOrg?.name}
                 </DialogTitle>
                 <DialogContent>
+                    {/* Repeated inside the dialog: the page-level alert renders
+                        behind this modal, so a rejected save looked like nothing
+                        happened at all. */}
+                    {error && (
+                        <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }} onClose={() => setError('')}>
+                            {error}
+                        </Alert>
+                    )}
+                    {memberCapExceedsTotal && (
+                        <Alert severity="warning" sx={{ mb: 2, borderRadius: 2 }}>
+                            Per-Member Cap ({editMemberStorageGB} GB) is larger than Total Storage
+                            ({editStorageGB} GB). The server rejects this, so no change can be saved until
+                            one of the two is adjusted.
+                        </Alert>
+                    )}
                     <Box sx={{ mt: 1 }}>
                         <TextField
                             select
