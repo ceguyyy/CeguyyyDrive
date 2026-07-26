@@ -3,22 +3,48 @@
 **Status:** Backlog. Nothing here is designed or approved yet.
 **Recorded:** 2026-07-26
 
-Three separate products are requested here, not one feature:
+Two products are requested here, plus a thin layer over both:
 
 | | What it is | Depends on |
 |---|---|---|
-| **A. AI Summary** | Summarise files, folders, and metadata | Nothing — shippable alone |
-| **B. CRM** | Boards, rows, columns, views, formulas, webhooks | Nothing — the largest piece |
-| **C. Reporting** | Widgets, charts, pivots, PDF analytics | **B** — it has nothing to report on until CRM exists |
+| **B. CRM** | Boards, rows, columns, views, formulas, webhooks | Nothing — the largest piece by far |
+| **C. Reporting** | Widgets, charts, pivots, PDF analytics | **B** — nothing to report on until CRM exists |
+| **A. AI** | Summaries and suggestions, sprinkled across features | Deliberately last |
 
-They should not be built in parallel or released together. C is meaningless
-without B, and A shares no code with either.
+**AI is minor throughout** — a small enhancement layered onto features that
+already work, never a feature in its own right. Summaries on files and folders,
+suggestions inside a board. Everything must be fully usable with it switched
+off, which it is by default.
+
+Treating it that way has a practical payoff: the one genuinely unresolved
+question in this whole document is which AI provider, and demoting AI means that
+question blocks nothing. Build B, then C, then sprinkle A wherever it helps.
+
+C is meaningless without B, so they are not built in parallel.
 
 ---
 
-## A. AI Summary
+## A. AI — minor, everywhere
 
-Summaries for a file, a folder, or a set of metadata.
+A thin enhancement layer, built last and switched off by default. Nothing here
+is on any feature's critical path: a file is still a file and a board is still a
+board with all of it disabled.
+
+Where it appears:
+
+- **Drive** — summaries for a file, a folder, or a set of metadata (below).
+- **CRM** — suggested rows, column values, and next actions inside a board.
+- Anywhere later that benefits, on the same terms.
+
+Shared rules across all of them:
+
+- Off unless the organization's Billing toggle enables it, which is also the
+  moment the customer consents to content leaving the platform.
+- Bounded by the per-organization call quota, so the bill cannot run away.
+- Every result is advisory. Nothing may auto-apply a suggestion, and no
+  authoritative value — a quota, an approval, a total — may come from a model.
+- Failure is silent and non-blocking. If the provider is down, the feature is
+  absent, not broken.
 
 ### Scope
 
@@ -80,11 +106,9 @@ Groups carry their own colour, ordering, collapse state, and per-group
 aggregation footers (sum, average, status distribution) computed over the rows
 inside them.
 
-**The cell storage model is the decision that is expensive to reverse.** A
-`crm_cells` row-per-value (EAV) keeps columns flexible but makes filtering and
-sorting across many columns slow; a single JSONB blob per row is fast to read
-but awkward to index per column. Postgres `jsonb_path_ops` on a per-row JSONB
-document is the likely answer, but it must be settled before any UI is written.
+**Cell storage is EAV** — one `crm_cells` row per value. Decided; see Decisions
+below for the four consequences to design around (reads are a pivot, filters
+mean joins, an empty cell is an absent row, and writes multiply).
 
 ### Column types
 
@@ -224,12 +248,9 @@ the same board should see the same colours.
 
 ### AI suggestions
 
-Suggested rows, column values, or next actions, offered in-board.
-
-**Blocked by the same unresolved decision as section A** — provider, cost model,
-and whether customer content may leave the platform. AI suggestions read the
-board's live data, which is customer data, so it cannot ship before that is
-settled. Everything else in B can.
+Suggested rows, column values, or next actions, offered in-board. Covered by
+section A — minor, last, off by default, and quota-bounded. CRM ships complete
+without it.
 
 ### Import / export
 
@@ -344,6 +365,51 @@ overstate what an organization is using.
 
 ## Decisions made (2026-07-26)
 
+**Cell storage — EAV.** One row per value in `crm_cells (row_id, column_id,
+value)`, not a JSONB document per row. This was the decision everything else in
+B rested on; it is now settled.
+
+It is the right call for Lookups, Rollups, and cross-column filtering, which all
+want to query a single column's values without unpacking every row. The costs
+come with it and should be designed for from the start rather than discovered:
+
+- **Reading a board is a pivot.** Rows × columns cells come back flat and have to
+  be assembled. Fetch all cells for the visible rows in one query and pivot in
+  memory; a query per row is the failure mode here.
+- **Filtering on N columns means N joins or a semi-join per predicate.** Index
+  `(column_id, row_id)` and add expression indexes on the value for the types
+  actually filtered on — numbers and dates first.
+- **An empty cell is an absent row, not a null value.** Every read path has to
+  treat "no cell" and "cell containing null" identically, or a board will show
+  gaps where a filter expected blanks.
+- **Writes multiply.** Creating a row with twenty columns is twenty inserts, and
+  a CSV import of a thousand rows is twenty thousand. Batch them; do not loop.
+
+**AI enablement — a per-organization Billing toggle.** `crm_ai_enabled`, and the
+equivalent for file summaries, alongside the other capability flags.
+
+This settles the consent boundary: nothing is sent anywhere for an organization
+that has not had the feature switched on, so enabling it is the moment the
+customer opts in. **It does not settle the provider** — see Still open.
+
+**AI usage quota — also set per organization in Billing.** A call ceiling, not
+just an on/off switch, since every request costs real money and an unbounded
+feature is an unbounded bill.
+
+What it needs to be usable rather than merely present:
+
+- **A period.** A quota with no reset is a lifetime allowance; monthly, aligned
+  to the billing cycle, is the expected meaning.
+- **Counted at the point of spend.** Increment when the provider call is made,
+  not when the user clicks — a failed or cached request must not consume quota,
+  and a retried one must not double-count.
+- **A refusal that explains itself.** Hitting the ceiling should say the
+  organization's AI quota is exhausted and when it resets, not fail as a generic
+  error. This is the difference between a support ticket and a plan upgrade.
+- **Visible before it runs out.** Remaining calls belong on the Billing screen
+  and near the AI action itself; a limit a user cannot see is one they only
+  learn about by hitting it.
+
 **Formula evaluation — client-side, result persisted to the server.**
 The browser computes; saving sends the computed value up.
 
@@ -384,16 +450,16 @@ overstate usage.
 
 ## Still open
 
-1. **Cell storage: JSONB per row, or EAV?** Unanswered, and still the most
-   expensive to reverse — everything in B is built on it. Settle before any
-   code.
+1. **Which AI provider.** Enablement, consent, and spend are settled — a
+   per-organization Billing toggle plus a call quota. The provider itself is
+   not, and it carries a question the toggle does not answer: whether that
+   vendor's terms permit customer documents to be sent at all, and what they may
+   retain.
 
-   Cross-board Lookups and Rollups raise the stakes: they filter and sort on
-   values living in another board's rows, which an indexed EAV table serves far
-   more naturally than a per-row JSONB document.
+   **Not blocking.** AI is minor and built last, so this can stay open through
+   all of B and C.
 
-   Also undecided within it: what a Relation does when its target row or board
-   is deleted.
-2. **AI provider, cost model, and whether customer content may leave the
-   platform.** Marked TBD. This is a legal and commercial decision before a
-   technical one, and it determines whether section A is viable at all.
+2. **What a Relation does when its target row or board is deleted** — dangle,
+   null out, or block the delete. Small next to the storage question that was
+   just settled, but it needs an answer before cross-board relations ship rather
+   than after the first support ticket.

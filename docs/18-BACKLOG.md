@@ -2,26 +2,28 @@
 
 ## Next Implementation (not yet designed)
 
-Three products, recorded in [24-NEXT-IMPLEMENTATION.md](24-NEXT-IMPLEMENTATION.md).
-Build order matters — Reporting has nothing to report on until CRM exists.
+Recorded in [24-NEXT-IMPLEMENTATION.md](24-NEXT-IMPLEMENTATION.md). Build in
+this order — Reporting has nothing to report on until CRM exists, and AI is a
+thin layer over features that must already work without it.
 
-- [ ] **A. AI Summary** — per file, folder, and metadata. Independent of B and C.
+- [ ] **Prerequisite: a job queue.** None exists. Webhook delivery, bulk
+      import/export, and later AI all need it.
 - [ ] **B. CRM** — boards, groups, columns, rows; table/card/kanban/calendar
-      views, then timeline/gantt; formulas, webhooks, templates, AI suggestions,
-      CSV/XLSX import and export. Every capability billable individually.
-      The largest piece.
+      views, then timeline/gantt; cross-board relations, lookups and rollups;
+      formulas, webhooks, templates, link sharing, CSV/XLSX import and export.
+      Every capability billable individually. By far the largest piece.
 - [ ] **C. Reporting** — widgets, charts, pivots, PDF analytics. **Depends on B.**
-- [ ] **Prerequisite: a job queue.** None exists. AI summarisation, webhook
-      delivery, and bulk import/export all need it.
+- [ ] **A. AI** — summaries on drive files and folders, suggestions inside a
+      board. **Minor and last.** Off by default, quota-bounded, advisory only;
+      every feature ships complete without it.
 
-Four of the six open decisions are settled (formula evaluation, PDF rendering,
-board visibility, CRM quota). **Two remain, both blocking:**
+Design decisions are settled — cell storage (EAV), formula evaluation, PDF
+rendering, board visibility, sharing, and billing. **Nothing is blocking:**
 
-- [ ] **Cell storage model** — JSONB per row or EAV. The most expensive to
-      reverse; everything in B is built on it.
-- [ ] **AI provider, cost model, and whether customer content may leave the
-      platform.** A legal and commercial call before a technical one, and it
-      determines whether A is viable at all.
+- [ ] Which AI provider, and whether its terms permit sending customer
+      documents. Can stay open through all of B and C.
+- [ ] What a cross-board Relation does when its target row or board is deleted.
+      Needed before relations ship, not before work starts.
 
 ## High Priority
 - [ ] Implement Neon DB Connection Pool in Node.js.
