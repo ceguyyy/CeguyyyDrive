@@ -1,4 +1,38 @@
 const organizationService = require('../services/organizationService');
+const apiKeyService = require('../services/apiKeyService');
+
+exports.listApiKeys = async (req, res, next) => {
+    try {
+        const keys = await apiKeyService.listKeys(req.params.orgId, req.user.id, req.user.role_name);
+        res.status(200).json({ status: 'success', data: { keys } });
+    } catch (err) {
+        next(err);
+    }
+};
+
+exports.createApiKey = async (req, res, next) => {
+    try {
+        const { name, scopes, expiresInDays } = req.body;
+        const { key, plaintext } = await apiKeyService.createKey(
+            req.params.orgId, req.user.id, { name, scopes, expiresInDays }, req.user.role_name
+        );
+        // `plaintext` is returned exactly once; it is not recoverable afterwards.
+        res.status(201).json({ status: 'success', data: { key, plaintext } });
+    } catch (err) {
+        next(err);
+    }
+};
+
+exports.revokeApiKey = async (req, res, next) => {
+    try {
+        const revoked = await apiKeyService.revokeKey(
+            req.params.orgId, req.user.id, req.params.keyId, req.user.role_name
+        );
+        res.status(200).json({ status: 'success', data: { key: revoked } });
+    } catch (err) {
+        next(err);
+    }
+};
 
 exports.createOrganization = async (req, res, next) => {
     try {

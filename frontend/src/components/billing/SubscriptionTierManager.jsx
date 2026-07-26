@@ -10,7 +10,8 @@ import {
     Edit as EditIcon,
     Delete as DeleteIcon,
     Chat as ChatIcon,
-    AssignmentTurnedIn as ApprovalIcon
+    AssignmentTurnedIn as ApprovalIcon,
+    Hub as HubIcon
 } from '@mui/icons-material';
 import api from '../../services/api';
 import { usePagination } from '../../hooks/usePagination';
@@ -27,6 +28,8 @@ const EMPTY_FORM = {
     max_organizations: 3,
     feature_approval_enabled: true,
     feature_chat_enabled: true,
+    // Off by default: Integration exposes an API surface, so a new tier opts in.
+    feature_integration_enabled: false,
     sort_order: 100
 };
 
@@ -39,6 +42,7 @@ const formFromTier = (tier) => ({
     max_organizations: tier.max_organizations,
     feature_approval_enabled: tier.feature_approval_enabled,
     feature_chat_enabled: tier.feature_chat_enabled,
+    feature_integration_enabled: tier.feature_integration_enabled,
     sort_order: tier.sort_order
 });
 
@@ -212,6 +216,9 @@ export default function SubscriptionTierManager({ tiers = [], onChanged }) {
                                             {tier.feature_chat_enabled && (
                                                 <Chip size="small" icon={<ChatIcon />} label="Chat" variant="outlined" />
                                             )}
+                                            {tier.feature_integration_enabled && (
+                                                <Chip size="small" icon={<HubIcon />} label="API" variant="outlined" />
+                                            )}
                                             {tier.feature_approval_enabled && (
                                                 <Chip size="small" icon={<ApprovalIcon />} label="Appr" variant="outlined" />
                                             )}
@@ -304,6 +311,10 @@ export default function SubscriptionTierManager({ tiers = [], onChanged }) {
                         <FormControlLabel
                             control={<Switch checked={!!form.feature_chat_enabled} onChange={setField('feature_chat_enabled')} />}
                             label="Enable Chat"
+                        />
+                        <FormControlLabel
+                            control={<Switch checked={!!form.feature_integration_enabled} onChange={setField('feature_integration_enabled')} />}
+                            label="Enable Integration (API keys)"
                         />
                     </Stack>
                 </DialogContent>

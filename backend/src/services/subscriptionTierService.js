@@ -70,6 +70,14 @@ function toTierFields(body = {}, { partial = false } = {}) {
         fields.featureChatEnabled = true;
     }
 
+    // Defaults to false, not true: Integration exposes an API surface, so it is
+    // opted into rather than granted by omission.
+    if (body.feature_integration_enabled !== undefined) {
+        fields.featureIntegrationEnabled = Boolean(body.feature_integration_enabled);
+    } else if (!partial) {
+        fields.featureIntegrationEnabled = false;
+    }
+
     if (body.sort_order !== undefined) {
         fields.sortOrder = Number(body.sort_order);
     } else if (!partial) {
@@ -101,7 +109,8 @@ class SubscriptionTierService {
             maxMembers: tier.max_members,
             maxOrganizations: tier.max_organizations,
             featureApprovalEnabled: tier.feature_approval_enabled,
-            featureChatEnabled: tier.feature_chat_enabled
+            featureChatEnabled: tier.feature_chat_enabled,
+            featureIntegrationEnabled: tier.feature_integration_enabled
         };
     }
 

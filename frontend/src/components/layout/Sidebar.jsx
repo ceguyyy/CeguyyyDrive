@@ -30,6 +30,7 @@ import {
     Star as StarIcon,
     Apartment as CompanyDriveIcon,
     AdminPanelSettings as BillingIcon,
+    Hub as IntegrationIcon,
     ExpandLess, ExpandMore
 } from '@mui/icons-material';
 
@@ -81,6 +82,18 @@ export default function Sidebar() {
 
     // When activeOrgId is null it means "Personal Drive" — no fallback to first org
     const currentOrg = activeOrgId ? (orgs.find(o => o.id === activeOrgId) || null) : null;
+
+    // A Super Admin always has the entry: they are the one who switches the
+    // feature on, and the page lets them pick any organization. An org owner
+    // sees it only once Billing has enabled Integration for that organization.
+    //
+    // Re-checked server-side either way: apiKeyService gates on owner/admin, and
+    // apiKeyMiddleware rejects keys while the feature is off. This is navigation,
+    // not the control.
+    const canUseIntegration = isSuperAdmin(user)
+        || (!!currentOrg
+            && currentOrg.feature_integration_enabled === true
+            && currentOrg.owner_id === user?.id);
 
     useEffect(() => {
         if (currentOrg && currentOrg.custom_app_title && currentOrg.custom_app_title.trim() !== '') {
@@ -399,6 +412,26 @@ export default function Sidebar() {
                             {showFull && <ListItemText primary="Organization" />}
                         </ListItemButton>
                     </ListItem>
+
+                    {/* Integration — the active organization's owner, or a
+                        platform admin, and only where Billing has enabled the
+                        feature. The server enforces both independently. */}
+                    {canUseIntegration && (
+                        <ListItem disablePadding sx={{ mb: 0.5, display: 'block' }}>
+                            <ListItemButton
+                                component={NavLink}
+                                to="/integration"
+                                sx={{
+                                    py: 0.75, px: showFull ? 1.5 : 0, justifyContent: showFull ? 'flex-start' : 'center', borderRadius: 1,
+                                    '&.active': { backgroundColor: 'action.selected' },
+                                    '& .MuiListItemIcon-root': { minWidth: showFull ? 32 : 'auto', justifyContent: 'center', color: 'text.secondary' }
+                                }}
+                            >
+                                <ListItemIcon><IntegrationIcon /></ListItemIcon>
+                                {showFull && <ListItemText primary="Integration" />}
+                            </ListItemButton>
+                        </ListItem>
+                    )}
 
                     {/* Trash */}
                     <ListItem disablePadding sx={{ mb: 0.5, display: 'block' }}>

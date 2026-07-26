@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate, useSearchParams, Link as RouterLink } from 'react-router-dom';
 import {
     Container, Paper, Typography, TextField, Button, Box, Alert, Link, Stack,
@@ -30,17 +30,57 @@ export default function ForgotPassword() {
     const [email, setEmail] = useState(prefilledEmail);
     const [otpCode, setOtpCode] = useState('');
     const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
     const [notice, setNotice] = useState('');
+    const captchaRef = useRef(null);
 
-    const requestCode = async (event) => {
+    // This endpoint sends mail to an address the caller supplies, so it is
+    // exactly what a bot would abuse. The captcha runs before the request; the
+    // server verifies the ticket independently.
+    const requestCode = (event) => {
         event.preventDefault();
         setError('');
+
+        const appId = String(import.meta.env.VITE_CAPTCHA_APP_ID || '');
+        if (!window.TencentCaptcha || !appId) {
+            // Captcha script or app id unavailable — the server still decides
+            // whether a ticket was required.
+            sendRequest();
+            return;
+        }
+
+        try {
+            const container = document.getElementById('forgot-captcha-container');
+            if (container) container.innerHTML = '';
+            if (captchaRef.current?.destroy) {
+                try { captchaRef.current.destroy(); } catch { /* already gone */ }
+            }
+
+            const captcha = new window.TencentCaptcha(container, appId, (res) => {
+                if (res.ret === 0) {
+                    sendRequest({ ticket: res.ticket, randstr: res.randstr });
+                } else {
+                    setError('Captcha verification was cancelled.');
+                }
+            }, {});
+
+            captchaRef.current = captcha;
+            captcha.show();
+        } catch {
+            sendRequest();
+        }
+    };
+
+    const sendRequest = async (captchaFields = {}) => {
         setIsSubmitting(true);
         try {
-            const res = await api.post('/auth/forgot-password', { email: email.trim() });
+            const res = await api.post('/auth/forgot-password', {
+                email: email.trim(),
+                ...captchaFields
+            });
             setNotice(res.data.data.message);
             setStep('reset');
         } catch (err) {
@@ -56,6 +96,13 @@ export default function ForgotPassword() {
 
         if (newPassword.length < MIN_PASSWORD_LENGTH) {
             setError(`New password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
+            return;
+        }
+
+        // Caught here rather than server-side: a typo in a password the user
+        // cannot see is the whole reason the second field exists.
+        if (newPassword !== confirmPassword) {
+            setError('The two passwords do not match.');
             return;
         }
 
@@ -116,6 +163,7 @@ export default function ForgotPassword() {
                             >
                                 {isSubmitting ? 'Sending…' : 'Send Reset Code'}
                             </Button>
+                            <Box id="forgot-captcha-container" />
                         </Stack>
                     </Box>
                 ) : (
@@ -145,9 +193,21 @@ export default function ForgotPassword() {
                                     )
                                 }}
                             />
+                            <TextField
+                                required fullWidth label="Retype New Password"
+                                type={showPassword ? 'text' : 'password'}
+                                value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
+                                autoComplete="new-password"
+                                error={!!confirmPassword && confirmPassword !== newPassword}
+                                helperText={
+                                    confirmPassword && confirmPassword !== newPassword
+                                        ? 'Passwords do not match.'
+                                        : 'Type it again to confirm.'
+                                }
+                            />
                             <Button
                                 type="submit" fullWidth variant="contained" size="large"
-                                disabled={isSubmitting || !otpCode.trim() || !newPassword}
+                                disabled={isSubmitting || !otpCode.trim() || !newPassword || !confirmPassword}
                                 sx={{ py: 1.4, borderRadius: 2, textTransform: 'none', fontWeight: 700 }}
                             >
                                 {isSubmitting ? 'Updating…' : 'Set New Password'}

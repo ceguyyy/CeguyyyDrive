@@ -60,24 +60,27 @@ class SubscriptionTierRepository {
 
     async create({
         name, label, storageLimitBytes, memberStorageLimitBytes, maxMembers,
-        maxOrganizations, featureApprovalEnabled, featureChatEnabled, sortOrder
+        maxOrganizations, featureApprovalEnabled, featureChatEnabled,
+        featureIntegrationEnabled, sortOrder
     }) {
         const result = await db.query(
             `INSERT INTO subscription_tiers (
                 name, label, storage_limit_bytes, member_storage_limit_bytes,
                 max_members, max_organizations, feature_approval_enabled,
-                feature_chat_enabled, sort_order
-             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                feature_chat_enabled, feature_integration_enabled, sort_order
+             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
              RETURNING *`,
             [name, label, storageLimitBytes, memberStorageLimitBytes, maxMembers,
-                maxOrganizations, featureApprovalEnabled, featureChatEnabled, sortOrder]
+                maxOrganizations, featureApprovalEnabled, featureChatEnabled,
+                featureIntegrationEnabled, sortOrder]
         );
         return result.rows[0];
     }
 
     async update(id, {
         name, label, storageLimitBytes, memberStorageLimitBytes, maxMembers,
-        maxOrganizations, featureApprovalEnabled, featureChatEnabled, sortOrder
+        maxOrganizations, featureApprovalEnabled, featureChatEnabled,
+        featureIntegrationEnabled, sortOrder
     }) {
         const result = await db.query(
             `UPDATE subscription_tiers
@@ -89,11 +92,13 @@ class SubscriptionTierRepository {
                  max_organizations = COALESCE($7, max_organizations),
                  feature_approval_enabled = COALESCE($8, feature_approval_enabled),
                  feature_chat_enabled = COALESCE($9, feature_chat_enabled),
-                 sort_order = COALESCE($10, sort_order)
+                 feature_integration_enabled = COALESCE($10, feature_integration_enabled),
+                 sort_order = COALESCE($11, sort_order)
              WHERE id = $1
              RETURNING *`,
             [id, name, label, storageLimitBytes, memberStorageLimitBytes, maxMembers,
-                maxOrganizations, featureApprovalEnabled, featureChatEnabled, sortOrder]
+                maxOrganizations, featureApprovalEnabled, featureChatEnabled,
+                featureIntegrationEnabled, sortOrder]
         );
         return result.rows[0];
     }
@@ -120,12 +125,14 @@ class SubscriptionTierRepository {
                      max_members = $4,
                      max_organizations = $5,
                      feature_approval_enabled = $6,
-                     feature_chat_enabled = $7
+                     feature_chat_enabled = $7,
+                     feature_integration_enabled = $8
                  WHERE plan_name = $1
                  RETURNING id`,
                 [planName, tier.storage_limit_bytes, tier.member_storage_limit_bytes,
                     tier.max_members, tier.max_organizations,
-                    tier.feature_approval_enabled, tier.feature_chat_enabled]
+                    tier.feature_approval_enabled, tier.feature_chat_enabled,
+                    tier.feature_integration_enabled]
             );
 
             // Redeemed licences already provisioned their organization, which the
@@ -138,12 +145,14 @@ class SubscriptionTierRepository {
                      max_members = $4,
                      max_organizations = $5,
                      feature_approval_enabled = $6,
-                     feature_chat_enabled = $7
+                     feature_chat_enabled = $7,
+                     feature_integration_enabled = $8
                  WHERE plan_name = $1 AND status = 'available'
                  RETURNING id`,
                 [planName, tier.storage_limit_bytes, tier.member_storage_limit_bytes,
                     tier.max_members, tier.max_organizations,
-                    tier.feature_approval_enabled, tier.feature_chat_enabled]
+                    tier.feature_approval_enabled, tier.feature_chat_enabled,
+                    tier.feature_integration_enabled]
             );
 
             await client.query('COMMIT');

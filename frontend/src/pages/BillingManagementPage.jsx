@@ -27,7 +27,8 @@ import {
     Visibility as VisibilityIcon,
     VisibilityOff as VisibilityOffIcon,
     CloudUpload as CloudUploadIcon,
-    People as PeopleIcon
+    People as PeopleIcon,
+    Hub as HubIcon
 } from '@mui/icons-material';
 import api from '../services/api';
 import axios from 'axios';
@@ -104,6 +105,7 @@ export default function BillingManagementPage() {
     const [editMaxOrgs, setEditMaxOrgs] = useState(3);
     const [editChat, setEditChat] = useState(true);
     const [editApproval, setEditApproval] = useState(true);
+    const [editIntegration, setEditIntegration] = useState(false);
     const [editGmtLocation, setEditGmtLocation] = useState('GMT+7 (Asia/Jakarta / Bangkok - WIB)');
     const [editCustomAppTitle, setEditCustomAppTitle] = useState('');
     const [editCustomLogoUrl, setEditCustomLogoUrl] = useState('');
@@ -118,6 +120,8 @@ export default function BillingManagementPage() {
     const [newMaxOrgs, setNewMaxOrgs] = useState(3);
     const [newChat, setNewChat] = useState(true);
     const [newApproval, setNewApproval] = useState(true);
+    // Integration exposes an API surface, so it is opted into rather than on by default.
+    const [newIntegration, setNewIntegration] = useState(false);
     const [newGmtLocation, setNewGmtLocation] = useState('GMT+7 (Asia/Jakarta)');
     const [newCustomAppTitle, setNewCustomAppTitle] = useState('');
     const [newCustomLogoUrl, setNewCustomLogoUrl] = useState('');
@@ -243,6 +247,7 @@ export default function BillingManagementPage() {
         setEditCustomLogoUrl(org.custom_logo_url || '');
         setEditChat(org.feature_chat_enabled !== false);
         setEditApproval(org.feature_approval_enabled !== false);
+        setEditIntegration(org.feature_integration_enabled === true);
         setEditNotes(org.admin_notes || '');
         setEditOrgModal(true);
     };
@@ -263,6 +268,7 @@ export default function BillingManagementPage() {
                 custom_logo_url: editCustomLogoUrl ? editCustomLogoUrl.trim() : null,
                 feature_chat_enabled: editChat,
                 feature_approval_enabled: editApproval,
+                feature_integration_enabled: editIntegration,
                 admin_notes: editNotes
             });
             setSuccessMsg(`Successfully updated quotas & features for ${selectedOrg.name}!`);
@@ -314,6 +320,7 @@ export default function BillingManagementPage() {
                 memberStorageLimitBytes: memberStorageBytes,
                 maxOrganizations: Number(newMaxOrgs),
                 featureChatEnabled: newChat,
+                featureIntegrationEnabled: newIntegration,
                 featureApprovalEnabled: newApproval,
                 gmtLocation: newGmtLocation,
                 customAppTitle: newCustomAppTitle ? newCustomAppTitle.trim() : null,
@@ -608,6 +615,9 @@ export default function BillingManagementPage() {
                                                             <Tooltip title={`Chat: ${o.feature_chat_enabled !== false ? 'Enabled' : 'Disabled'}`}>
                                                                 <Chip icon={<ChatIcon sx={{ fontSize: 14, color: 'inherit !important' }} />} label="Chat" size="small" sx={o.feature_chat_enabled !== false ? { bgcolor: '#EDF3EC', color: '#2B593F', fontWeight: 600, border: 'none', borderRadius: 1, height: 22, fontSize: '0.7rem' } : { bgcolor: '#F1F1EF', color: '#73726E', fontWeight: 500, border: 'none', borderRadius: 1, height: 22, fontSize: '0.7rem' }} />
                                                             </Tooltip>
+                                                            <Tooltip title={`Integration API: ${o.feature_integration_enabled === true ? 'Enabled' : 'Disabled'}`}>
+                                                                <Chip icon={<HubIcon sx={{ fontSize: 14, color: 'inherit !important' }} />} label="API" size="small" sx={o.feature_integration_enabled === true ? { bgcolor: '#EDF3EC', color: '#2B593F', fontWeight: 600, border: 'none', borderRadius: 1, height: 22, fontSize: '0.7rem' } : { bgcolor: '#F1F1EF', color: '#73726E', fontWeight: 500, border: 'none', borderRadius: 1, height: 22, fontSize: '0.7rem' }} />
+                                                            </Tooltip>
                                                             <Tooltip title={`Approvals: ${o.feature_approval_enabled !== false ? 'Enabled' : 'Disabled'}`}>
                                                                 <Chip icon={<ApprovalIcon sx={{ fontSize: 14, color: 'inherit !important' }} />} label="Appr" size="small" sx={o.feature_approval_enabled !== false ? { bgcolor: '#EDF3EC', color: '#2B593F', fontWeight: 600, border: 'none', borderRadius: 1, height: 22, fontSize: '0.7rem' } : { bgcolor: '#F1F1EF', color: '#73726E', fontWeight: 500, border: 'none', borderRadius: 1, height: 22, fontSize: '0.7rem' }} />
                                                             </Tooltip>
@@ -806,6 +816,10 @@ export default function BillingManagementPage() {
                                         <FormControlLabel
                                             control={<Switch checked={newApproval} onChange={(e) => setNewApproval(e.target.checked)} color="primary" />}
                                             label={<Typography variant="body2" fontWeight={600}>Enable Approval Workflows</Typography>}
+                                        />
+                                        <FormControlLabel
+                                            control={<Switch checked={newIntegration} onChange={(e) => setNewIntegration(e.target.checked)} color="primary" />}
+                                            label={<Typography variant="body2" fontWeight={600}>Enable Integration (API keys)</Typography>}
                                         />
                                     </Box>
 
@@ -1208,6 +1222,12 @@ export default function BillingManagementPage() {
                             <FormControlLabel
                                 control={<Switch checked={editApproval} onChange={(e) => setEditApproval(e.target.checked)} color="primary" />}
                                 label={<Typography variant="body2" fontWeight={600}>Enable Approval Workflows Feature</Typography>}
+                            />
+                            {/* Switching this off also kills API keys already issued
+                                for this organization, not just the sidebar item. */}
+                            <FormControlLabel
+                                control={<Switch checked={editIntegration} onChange={(e) => setEditIntegration(e.target.checked)} color="primary" />}
+                                label={<Typography variant="body2" fontWeight={600}>Enable Integration Feature (API keys)</Typography>}
                             />
                         </Box>
 

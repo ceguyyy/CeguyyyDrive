@@ -15,6 +15,7 @@ const notificationRoutes = require('./notification.routes');
 const organizationRoutes = require('./organization.routes');
 const approvalRoutes = require('./approval.routes');
 const billingRoutes = require('./billing.routes');
+const integrationRoutes = require('./integration.routes');
 
 const router = express.Router();
 
@@ -40,6 +41,9 @@ router.use('/notifications', notificationRoutes);
 router.use('/organizations', organizationRoutes);
 router.use('/approvals', approvalRoutes);
 router.use('/billing', billingRoutes);
+// API-key authenticated. Kept on its own path so no JWT-protected route is
+// ever reachable with a key.
+router.use('/integration/v1', integrationRoutes);
 router.use('/', versionRoutes); // Mounts /files/:fileId/versions and /versions/:id
 
 module.exports = router;

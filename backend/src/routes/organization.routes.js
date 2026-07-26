@@ -25,4 +25,9 @@ router.patch('/:orgId/members/:memberId/storage', organizationController.updateM
 router.patch('/:orgId/members/:memberId/role', organizationController.changeMemberRole);
 router.post('/:orgId/transfer-owner', organizationController.transferOwner);
 
+// API key management for the Integration page. Owner-only, enforced in the service.
+router.get('/:orgId/api-keys', organizationController.listApiKeys);
+router.post('/:orgId/api-keys', organizationController.createApiKey);
+router.delete('/:orgId/api-keys/:keyId', organizationController.revokeApiKey);
+
 module.exports = router;

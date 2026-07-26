@@ -19,6 +19,7 @@ import StarredFiles from './pages/StarredFiles';
 import CompanyDrivePage from './pages/CompanyDrivePage';
 import CompanyDriveTrash from './pages/CompanyDriveTrash';
 import BillingManagementPage from './pages/BillingManagementPage';
+import IntegrationPage from './pages/IntegrationPage';
 
 const ProtectedRoute = ({ children }) => {
     const { token } = useAuthStore();
@@ -75,6 +76,7 @@ export default function App() {
                 <Route path="shared" element={<SharedWithMe />} />
                 <Route path="approvals" element={<ApprovalsPage />} />
                 <Route path="organization" element={<OrganizationSettings />} />
+                <Route path="integration" element={<IntegrationPage />} />
                 <Route path="trash" element={<Trash />} />
                 <Route path="chat" element={<ChatPage />} />
                 <Route path="billing" element={

@@ -3,6 +3,8 @@ const authService = require('../services/authService');
 const captchaService = require('../services/captchaService');
 const userRepository = require('../repositories/userRepository');
 const storageQuotaService = require('../services/storageQuotaService');
+const AppError = require('../utils/AppError');
+const logger = require('../utils/logger');
 
 const registerSchema = z.object({
     email: z.string().email(),
@@ -27,7 +29,9 @@ const loginSchema = z.object({
 });
 
 const forgotPasswordSchema = z.object({
-    email: z.string().email()
+    email: z.string().email(),
+    ticket: z.string().optional(),
+    randstr: z.string().optional()
 });
 
 const resetPasswordSchema = z.object({
@@ -36,9 +40,39 @@ const resetPasswordSchema = z.object({
     newPassword: z.string().min(8)
 });
 
+const isCaptchaConfigured = () => Boolean(
+    process.env.CAPTCHA_APP_ID
+    && process.env.CAPTCHA_SECRET_KEY
+    && process.env.TENCENT_SECRET_ID
+);
+
+/**
+ * Rejects the request unless the captcha checks out.
+ *
+ * Skipped, loudly, when no captcha credentials are configured — otherwise a
+ * local or misconfigured deployment could never send a reset email at all.
+ */
+async function assertCaptcha(req, ticket, randstr) {
+    if (!isCaptchaConfigured()) {
+        logger.warn('Captcha is not configured; skipping verification for a password reset request.');
+        return;
+    }
+
+    const result = await captchaService.verifyCaptcha(ticket, randstr, req.ip);
+    if (result !== true) {
+        throw new AppError(
+            typeof result === 'string' ? result : 'Captcha verification failed. Please try again.',
+            400
+        );
+    }
+}
+
 exports.forgotPassword = async (req, res, next) => {
     try {
-        const { email } = forgotPasswordSchema.parse(req.body);
+        const { email, ticket, randstr } = forgotPasswordSchema.parse(req.body);
+        // Verified before touching the mailer: this endpoint sends email to an
+        // address the caller supplies, so it is exactly what a bot would abuse.
+        await assertCaptcha(req, ticket, randstr);
         const result = await authService.forgotPassword(email);
         res.status(200).json({ status: 'success', data: result });
     } catch (err) {
