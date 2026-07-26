@@ -1,6 +1,8 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const userRepository = require('../repositories/userRepository');
+const passwordResetRepository = require('../repositories/passwordResetRepository');
 const roleRepository = require('../repositories/roleRepository');
 const otpRepository = require('../repositories/otpRepository');
 const telegramService = require('./telegramService');
@@ -9,6 +11,11 @@ const billingRepository = require('../repositories/billingRepository');
 const organizationService = require('./organizationService');
 const organizationRepository = require('../repositories/organizationRepository');
 const AppError = require('../utils/AppError');
+
+// Longer than the 5-minute login OTP: a reset means switching to an email
+// client and back, and the code is single-use and attempt-limited anyway.
+const PASSWORD_RESET_TTL_MINUTES = 15;
+const MAX_RESET_ATTEMPTS = 5;
 
 class AuthService {
     _signToken(id, role_name, type) {
@@ -116,7 +123,69 @@ class AuthService {
         await telegramService.sendOtpMessage(newUser.email, otpCode);
         await plunkService.sendOtpEmail(newUser.email, otpCode);
 
-        return { user: newUser, requiresOtp: true, email: newUser.email, message: 'OTP verification code sent to your email (and Telegram).' };
+        return { user: newUser, requiresOtp: true, email: newUser.email, message: 'OTP verification code sent to your email.' };
+    }
+
+    // Always reports success, even for an unknown or suspended address.
+    // Reporting otherwise turns this endpoint into an account-enumeration oracle.
+    async forgotPassword(email) {
+        const GENERIC = 'If that email is registered, a reset code is on its way.';
+
+        const address = String(email || '').trim();
+        if (!address) throw new AppError('Email is required', 400);
+
+        const user = await userRepository.findByEmail(address);
+        if (!user || user.status === 'suspended') {
+            return { message: GENERIC };
+        }
+
+        const otpCode = crypto.randomInt(100000, 1000000).toString();
+        const expiresAt = new Date(Date.now() + PASSWORD_RESET_TTL_MINUTES * 60 * 1000);
+
+        await passwordResetRepository.create(user.id, user.email, otpCode, expiresAt);
+        await plunkService.sendPasswordResetEmail(user.email, otpCode, PASSWORD_RESET_TTL_MINUTES);
+
+        return { message: GENERIC };
+    }
+
+    async resetPassword(email, otpCode, newPassword) {
+        const address = String(email || '').trim();
+        const code = String(otpCode || '').trim();
+
+        if (!address || !code) throw new AppError('Email and reset code are required', 400);
+        if (!newPassword || newPassword.length < 8) {
+            throw new AppError('New password must be at least 8 characters', 400);
+        }
+
+        const record = await passwordResetRepository.findActive(address);
+        if (!record) {
+            throw new AppError('That reset code is invalid or has expired. Request a new one.', 400);
+        }
+
+        if (record.attempts >= MAX_RESET_ATTEMPTS) {
+            await passwordResetRepository.markAsUsed(record.id);
+            throw new AppError('Too many incorrect attempts. Request a new reset code.', 429);
+        }
+
+        if (record.otp_code !== code) {
+            const attempts = await passwordResetRepository.incrementAttempts(record.id);
+            const remaining = Math.max(0, MAX_RESET_ATTEMPTS - attempts);
+            throw new AppError(
+                remaining > 0
+                    ? `Incorrect reset code. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.`
+                    : 'Too many incorrect attempts. Request a new reset code.',
+                400
+            );
+        }
+
+        const user = await userRepository.findByEmail(address);
+        if (!user) throw new AppError('User not found', 404);
+
+        const passwordHash = await bcrypt.hash(newPassword, 12);
+        await userRepository.updatePassword(user.id, passwordHash);
+        await passwordResetRepository.markAsUsed(record.id);
+
+        return { message: 'Password updated. You can now sign in with your new password.' };
     }
 
     async login(email, password) {

@@ -14,11 +14,11 @@ exports.createOrganization = async (req, res, next) => {
 
 exports.getUserOrganizations = async (req, res, next) => {
     try {
-        const { organizations, ownedCount, maxOwnedOrganizations } =
+        const { organizations, ownedCount, maxOwnedOrganizations, unlimitedOrganizations } =
             await organizationService.getUserOrganizations(req.user.id, req.user.role_name);
         res.status(200).json({
             status: 'success',
-            data: { organizations, ownedCount, maxOwnedOrganizations }
+            data: { organizations, ownedCount, maxOwnedOrganizations, unlimitedOrganizations }
         });
     } catch (err) {
         next(err);

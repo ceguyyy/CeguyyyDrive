@@ -21,6 +21,19 @@ class UserRepository {
         return result.rows[0];
     }
     
+    // password_changed_at is what lets authMiddleware evict access tokens minted
+    // before the reset, so it is stamped in the same statement as the hash.
+    async updatePassword(userId, passwordHash) {
+        const result = await db.query(
+            `UPDATE users
+             SET password_hash = $2, password_changed_at = CURRENT_TIMESTAMP
+             WHERE id = $1
+             RETURNING id, email, full_name`,
+            [userId, passwordHash]
+        );
+        return result.rows[0];
+    }
+
     async findById(id) {
         const result = await db.query(
             `SELECT u.*, r.name as role_name 

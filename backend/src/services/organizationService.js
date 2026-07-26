@@ -3,7 +3,11 @@ const AppError = require('../utils/AppError');
 const plunkService = require('./plunkService');
 const cosService = require('./cosService');
 const { getDescendantNames, hasCycle, findScopeViolations } = require('./roleHierarchyService');
-const { isSuperAdminRole, UNLIMITED_ORGANIZATIONS } = require('../config/platformRoles');
+const {
+    isSuperAdminRole,
+    isUnlimitedOrganizations,
+    UNLIMITED_ORGANIZATIONS
+} = require('../config/platformRoles');
 const db = require('../config/db');
 
 // Used only when the organization's owner has no member row to read a role from.
@@ -176,12 +180,16 @@ class OrganizationService {
         const maxOwnedOrganizations = isSuperAdminRole(actorRoleName)
             ? UNLIMITED_ORGANIZATIONS
             : planMaxOrganizations;
+
+        // An explicit flag, so the UI can say "Unlimited" instead of printing
+        // the sentinel as a literal count.
+        const unlimitedOrganizations = isUnlimitedOrganizations(maxOwnedOrganizations);
         for (const org of organizations) {
             if (org.custom_logo_url) {
                 org.custom_logo_url = await cosService.resolvePublicUrl(org.custom_logo_url);
             }
         }
-        return { organizations, ownedCount, maxOwnedOrganizations };
+        return { organizations, ownedCount, maxOwnedOrganizations, unlimitedOrganizations };
     }
 
     // `roleName` has no default: the old 'Member' fallback names no node in the

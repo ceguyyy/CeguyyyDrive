@@ -5,6 +5,7 @@ import { isSuperAdmin } from './utils/roles';
 
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
 import DashboardLayout from './layouts/DashboardLayout';
 import Dashboard from './pages/Dashboard';
 import Trash from './pages/Trash';
@@ -53,6 +54,11 @@ export default function App() {
             <Route path="/s/:token" element={<PublicShare />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            {/* Platform-admin registration lives on its own unlisted path rather
+                than as a tab on /register. The beta access keys are still what
+                actually gate the role — this only stops advertising it. */}
+            <Route path="/ceguyyyy-admin-billing" element={<Register platformAdminOnly />} />
             
             <Route path="/" element={
                 <ProtectedRoute>

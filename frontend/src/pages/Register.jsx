@@ -3,10 +3,20 @@ import { useNavigate, useSearchParams, Link as RouterLink } from 'react-router-d
 import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import { Container, Paper, Typography, TextField, Button, Box, Alert, Link, Tabs, Tab, Divider, Stack, InputAdornment, IconButton } from '@mui/material';
-import { Business as OrgIcon, Group as MemberIcon, VpnKey as AdminIcon, MarkEmailRead as EmailIcon, Visibility, VisibilityOff } from '@mui/icons-material';
+import { Business as OrgIcon, Group as MemberIcon, MarkEmailRead as EmailIcon, Visibility, VisibilityOff } from '@mui/icons-material';
 import CloudLogo from '../components/ui/CloudLogo';
 
-export default function Register() {
+const PLATFORM_ADMIN_TAB = 2;
+
+/**
+ * `platformAdminOnly` renders the admin form on its own route
+ * (/ceguyyyy-admin-billing) and drops the tab strip, so the public /register
+ * page never advertises that platform-admin registration exists.
+ *
+ * This is discoverability, not access control: authService.register still
+ * requires both beta access keys, and that check is what actually gates the role.
+ */
+export default function Register({ platformAdminOnly = false }) {
     const navigate = useNavigate();
     const setAuth = useAuthStore(state => state.setAuth);
 
@@ -16,7 +26,9 @@ export default function Register() {
     const invitedOrgId = searchParams.get('orgId') || '';
 
     // Tab State: 0 = Org Owner, 1 = Join Org (Member), 2 = Platform Admin
-    const [tabIndex, setTabIndex] = useState(invitedOrgId ? 1 : 0);
+    const [tabIndex, setTabIndex] = useState(
+        platformAdminOnly ? PLATFORM_ADMIN_TAB : (invitedOrgId ? 1 : 0)
+    );
 
     // Common Fields
     const [fullName, setFullName] = useState('');
@@ -168,10 +180,12 @@ export default function Register() {
                 <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', flexDirection: 'column' }}>
                     <CloudLogo size={56} sx={{ mb: 1.5 }} />
                     <Typography component="h1" variant="h5" fontWeight="800" sx={{ letterSpacing: '-0.5px' }}>
-                        Create CeguyyyDrive Account
+                        {platformAdminOnly ? 'Platform Admin Registration' : 'Create CeguyyyDrive Account'}
                     </Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                        Select your registration tier below to get started
+                        {platformAdminOnly
+                            ? 'Restricted. Both beta access keys are required.'
+                            : 'Select your registration tier below to get started'}
                     </Typography>
                 </Box>
 
@@ -183,16 +197,19 @@ export default function Register() {
 
                 {step === 'register' ? (
                     <Box component="form" onSubmit={onSubmit} sx={{ width: '100%' }}>
-                        <Tabs
-                            value={tabIndex}
-                            onChange={handleTabChange}
-                            variant="fullWidth"
-                            sx={{ mb: 3, borderBottom: 1, borderColor: 'divider', '& .MuiTab-root': { py: 1.5, fontWeight: 600, textTransform: 'none', fontSize: '0.9rem' } }}
-                        >
-                            <Tab icon={<OrgIcon sx={{ mb: 0.5 }} />} label="Org Owner" />
-                            <Tab icon={<MemberIcon sx={{ mb: 0.5 }} />} label="Join Org" />
-                            <Tab icon={<AdminIcon sx={{ mb: 0.5 }} />} label="Platform Admin" />
-                        </Tabs>
+                        {/* The Platform Admin tab is gone from the public page;
+                            that form lives at /ceguyyyy-admin-billing instead. */}
+                        {!platformAdminOnly && (
+                            <Tabs
+                                value={tabIndex}
+                                onChange={handleTabChange}
+                                variant="fullWidth"
+                                sx={{ mb: 3, borderBottom: 1, borderColor: 'divider', '& .MuiTab-root': { py: 1.5, fontWeight: 600, textTransform: 'none', fontSize: '0.9rem' } }}
+                            >
+                                <Tab icon={<OrgIcon sx={{ mb: 0.5 }} />} label="Org Owner" />
+                                <Tab icon={<MemberIcon sx={{ mb: 0.5 }} />} label="Join Org" />
+                            </Tabs>
+                        )}
 
                         {/* Tab 0 Description */}
                         {tabIndex === 0 && (

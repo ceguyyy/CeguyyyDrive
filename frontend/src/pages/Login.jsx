@@ -192,6 +192,11 @@ export default function Login() {
                             {isSubmitting ? 'Requesting OTP...' : 'Sign In'}
                         </Button>
                         <Box textAlign="center">
+                            <Typography variant="body2" sx={{ mb: 1 }}>
+                                <Link component={RouterLink} to="/forgot-password" variant="body2" fontWeight="bold">
+                                    Forgot your password?
+                                </Link>
+                            </Typography>
                             <Typography variant="body2">
                                 New here?{' '}
                                 <Link component={RouterLink} to="/register" variant="body2" fontWeight="bold">

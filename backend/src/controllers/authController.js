@@ -26,6 +26,36 @@ const loginSchema = z.object({
     randstr: z.string().optional()
 });
 
+const forgotPasswordSchema = z.object({
+    email: z.string().email()
+});
+
+const resetPasswordSchema = z.object({
+    email: z.string().email(),
+    otpCode: z.string().min(4).max(10),
+    newPassword: z.string().min(8)
+});
+
+exports.forgotPassword = async (req, res, next) => {
+    try {
+        const { email } = forgotPasswordSchema.parse(req.body);
+        const result = await authService.forgotPassword(email);
+        res.status(200).json({ status: 'success', data: result });
+    } catch (err) {
+        next(err);
+    }
+};
+
+exports.resetPassword = async (req, res, next) => {
+    try {
+        const { email, otpCode, newPassword } = resetPasswordSchema.parse(req.body);
+        const result = await authService.resetPassword(email, otpCode, newPassword);
+        res.status(200).json({ status: 'success', data: result });
+    } catch (err) {
+        next(err);
+    }
+};
+
 exports.register = async (req, res, next) => {
     try {
         const validatedData = registerSchema.parse(req.body);

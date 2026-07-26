@@ -61,6 +61,62 @@ class PlunkService {
         }
     }
 
+    async sendPasswordResetEmail(email, otpCode, expiryMinutes = 15) {
+        const subject = `🔑 Reset your CeguyyyDrive password: ${otpCode}`;
+        const htmlBody = `
+            <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px;">
+                <div style="text-align: center; margin-bottom: 24px;">
+                    <h1 style="color: #1e293b; font-size: 24px; font-weight: 700; margin: 0;">CeguyyyDrive</h1>
+                    <p style="color: #64748b; font-size: 14px; margin-top: 4px;">Password Reset Request</p>
+                </div>
+                <div style="background-color: #f8fafc; padding: 24px; border-radius: 8px; text-align: center; margin-bottom: 24px; border: 1px dashed #cbd5e1;">
+                    <p style="color: #475569; font-size: 14px; margin: 0 0 12px 0;">Use this code to set a new password:</p>
+                    <div style="font-size: 32px; font-weight: 800; letter-spacing: 8px; color: #dc2626; background-color: #ffffff; padding: 12px 24px; border-radius: 6px; display: inline-block; border: 1px solid #e2e8f0;">
+                        ${otpCode}
+                    </div>
+                </div>
+                <p style="color: #64748b; font-size: 14px; line-height: 1.5; margin-bottom: 24px; text-align: center;">
+                    This code expires in <strong>${expiryMinutes} minutes</strong> and can be used once.
+                    If you did not request a password reset, ignore this email &mdash; your password stays unchanged.
+                </p>
+                <div style="border-top: 1px solid #e2e8f0; padding-top: 16px; text-align: center;">
+                    <p style="color: #94a3b8; font-size: 12px; margin: 0;">&copy; ${new Date().getFullYear()} CeguyyyDrive. All rights reserved.</p>
+                </div>
+            </div>
+        `;
+
+        const fromEmail = process.env.PLUNK_FROM_EMAIL || 'noreply@christiangunawan.my.id';
+        const rawKey = process.env.PLUNK_API_KEY || this.apiKey;
+        const apiKey = rawKey ? (rawKey.startsWith('Bearer ') ? rawKey.slice(7).trim() : rawKey.trim()) : null;
+
+        if (!apiKey) {
+            console.log('\n======================================================');
+            console.log(`[PLUNK PASSWORD RESET DEV FALLBACK] To: ${email} | CODE: ${otpCode}`);
+            console.log('======================================================\n');
+            return true;
+        }
+
+        try {
+            await axios.post(this.apiUrl, {
+                to: email,
+                from: fromEmail,
+                subject: subject,
+                body: htmlBody
+            }, {
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            console.log(`[Plunk Email Sent] Password reset code delivered to ${email}`);
+            return true;
+        } catch (err) {
+            console.error('\n❌ [Plunk API Error Details]:', JSON.stringify(err.response?.data || err.message, null, 2));
+            console.log(`\n👉 [PLUNK RESET FALLBACK LOG] To: ${email} | CODE: ${otpCode}\n`);
+            return true;
+        }
+    }
+
     async sendLicenseKeyEmail(email, licenseKey, planName, gmtLocation = 'GMT+7 (Asia/Jakarta)') {
         const subject = `🎉 Welcome to CeguyyyDrive! Your ${planName} Organization License Key`;
         const fromEmail = process.env.PLUNK_FROM_EMAIL || 'noreply@christiangunawan.my.id';

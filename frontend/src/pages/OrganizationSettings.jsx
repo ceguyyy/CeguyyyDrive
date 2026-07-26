@@ -186,7 +186,10 @@ export default function OrganizationSettings() {
     const userOrgs = orgsData?.organizations ?? [];
     const ownedOrgCount = orgsData?.ownedCount ?? 0;
     const maxOwnedOrgs = orgsData?.maxOwnedOrganizations ?? null;
-    const isAtOrgLimit = maxOwnedOrgs !== null && ownedOrgCount >= maxOwnedOrgs;
+    // Super Admins have no cap. The server sends a sentinel that fits the INT
+    // column, so the flag — not the number — decides what to render.
+    const hasUnlimitedOrgs = orgsData?.unlimitedOrganizations === true;
+    const isAtOrgLimit = !hasUnlimitedOrgs && maxOwnedOrgs !== null && ownedOrgCount >= maxOwnedOrgs;
     const orgMembers = membersData || [];
     const orgRoles = rolesData || [];
 
@@ -364,7 +367,9 @@ export default function OrganizationSettings() {
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     {maxOwnedOrgs !== null && (
                         <Typography variant="caption" sx={{ fontWeight: 600 }} color={isAtOrgLimit ? 'error.main' : 'text.secondary'}>
-                            {ownedOrgCount} of {maxOwnedOrgs} organizations used
+                            {hasUnlimitedOrgs
+                                ? `${ownedOrgCount} organization${ownedOrgCount === 1 ? '' : 's'} · Unlimited`
+                                : `${ownedOrgCount} of ${maxOwnedOrgs} organizations used`}
                         </Typography>
                     )}
                     <Tooltip title={!isAtOrgLimit ? '' : maxOwnedOrgs === 0

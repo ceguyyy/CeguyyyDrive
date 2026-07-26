@@ -30,6 +30,15 @@ exports.protect = async (req, res, next) => {
             return next(new AppError('Your account has been suspended. Contact your administrator.', 403));
         }
 
+        // A password reset must evict whoever prompted it. `iat` is in seconds;
+        // the 1s allowance covers a token minted in the same second as the change.
+        if (currentUser.password_changed_at) {
+            const changedAtSeconds = Math.floor(new Date(currentUser.password_changed_at).getTime() / 1000);
+            if (decoded.iat && decoded.iat + 1 < changedAtSeconds) {
+                return next(new AppError('Your password was changed. Please log in again.', 401));
+            }
+        }
+
         // Grant access to protected route
         req.user = currentUser;
         next();
