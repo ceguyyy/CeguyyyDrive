@@ -216,7 +216,7 @@ class AuthService {
         return {
             requiresOtp: true,
             email: user.email,
-            message: 'OTP has been sent to your email (and Telegram). It is valid for 5 minutes.'
+            message: 'OTP has been sent to your email . It is valid for 5 minutes.'
         };
     }
 

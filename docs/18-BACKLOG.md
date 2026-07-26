@@ -1,5 +1,21 @@
 # Backlog
 
+## Next Implementation (not yet designed)
+
+Three products, recorded in [24-NEXT-IMPLEMENTATION.md](24-NEXT-IMPLEMENTATION.md).
+Build order matters — Reporting has nothing to report on until CRM exists.
+
+- [ ] **A. AI Summary** — per file, folder, and metadata. Independent of B and C.
+- [ ] **B. CRM** — boards, columns, rows, kanban/calendar views, formulas,
+      webhooks, CSV/XLSX import and export. The largest piece.
+- [ ] **C. Reporting** — widgets, charts, pivots, PDF analytics. **Depends on B.**
+- [ ] **Prerequisite: a job queue.** None exists. AI summarisation, webhook
+      delivery, and bulk import/export all need it.
+
+Six open decisions are listed at the end of that document; the cell storage
+model and the formula evaluation strategy in particular should be settled before
+any code is written, because everything else in B rests on them.
+
 ## High Priority
 - [ ] Implement Neon DB Connection Pool in Node.js.
 - [ ] Set up Zod schemas for all request payloads.
