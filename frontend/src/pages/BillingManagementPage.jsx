@@ -105,13 +105,6 @@ export default function BillingManagementPage() {
     // plan whenever another organization is created.
     const isInheritedOrg = selectedOrg ? selectedOrg.is_licensed === false : false;
 
-    // billingService rejects a per-member cap above the organization's total,
-    // which leaves an already-inconsistent organization unsaveable until one of
-    // the two is corrected. Surfaced before submitting rather than as a 400.
-    const memberCapExceedsTotal =
-        Number(editMemberStorageGB) > 0
-        && Number(editStorageGB) > 0
-        && Number(editMemberStorageGB) > Number(editStorageGB);
     const [editPlanType, setEditPlanType] = useState('Pro');
     const [editStorageGB, setEditStorageGB] = useState(100);
     const [editMaxMembers, setEditMaxMembers] = useState(25);
@@ -120,6 +113,17 @@ export default function BillingManagementPage() {
     const [editChat, setEditChat] = useState(true);
     const [editApproval, setEditApproval] = useState(true);
     const [editIntegration, setEditIntegration] = useState(false);
+
+    // Declared after the state it reads: a const cannot be referenced before
+    // its initializer runs, and placing this above threw on every render.
+    //
+    // billingService rejects a per-member cap above the organization's total,
+    // which leaves an already-inconsistent organization unsaveable until one of
+    // the two is corrected. Surfaced before submitting rather than as a 400.
+    const memberCapExceedsTotal =
+        Number(editMemberStorageGB) > 0
+        && Number(editStorageGB) > 0
+        && Number(editMemberStorageGB) > Number(editStorageGB);
     const [editGmtLocation, setEditGmtLocation] = useState('GMT+7 (Asia/Jakarta / Bangkok - WIB)');
     const [editCustomAppTitle, setEditCustomAppTitle] = useState('');
     const [editCustomLogoUrl, setEditCustomLogoUrl] = useState('');
