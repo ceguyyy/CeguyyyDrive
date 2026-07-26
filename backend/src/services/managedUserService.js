@@ -44,14 +44,25 @@ class ManagedUserService {
         const target = await db.query(`SELECT id FROM users WHERE id = $1`, [userId]);
         if (!target.rows[0]) throw new AppError('User not found', 404);
 
+        // Derived here rather than with `CASE WHEN $2 = 'suspended'` in SQL:
+        // using $2 both as a column value and as a comparison operand makes
+        // Postgres deduce two types for one parameter and reject the statement
+        // with "inconsistent types deduced for parameter $2".
+        const isSuspended = status === 'suspended';
+
         const result = await db.query(
             `UPDATE users
              SET status = $2,
-                 suspension_reason = CASE WHEN $2 = 'suspended' THEN $3 ELSE NULL END,
-                 suspended_at = CASE WHEN $2 = 'suspended' THEN CURRENT_TIMESTAMP ELSE NULL END
+                 suspension_reason = $3,
+                 suspended_at = $4
              WHERE id = $1
              RETURNING id, email, full_name, status, suspension_reason, suspended_at`,
-            [userId, status, reason || null]
+            [
+                userId,
+                status,
+                isSuspended ? (reason || null) : null,
+                isSuspended ? new Date() : null
+            ]
         );
         return result.rows[0];
     }
