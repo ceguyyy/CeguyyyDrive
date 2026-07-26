@@ -28,11 +28,17 @@ exports.authenticate = async (req, res, next) => {
             return next(new AppError('Invalid, revoked, or expired API key.', 401));
         }
 
-        // Checked per request, not just when the sidebar renders: switching the
-        // feature off in Billing must immediately kill keys already in the wild.
-        const org = await organizationRepository.findOrganizationById(context.organizationId);
-        if (!org || !org.feature_integration_enabled) {
-            return next(new AppError('The Integration feature is not enabled for this organization.', 403));
+        // Organization keys only. A Personal Drive key has no organization, so
+        // there is no billing feature to gate it — it reaches nothing but the
+        // creator's own drive.
+        if (!context.isPersonal) {
+            // Checked per request, not just when the sidebar renders: switching
+            // the feature off in Billing must immediately kill keys already in
+            // the wild.
+            const org = await organizationRepository.findOrganizationById(context.organizationId);
+            if (!org || !org.feature_integration_enabled) {
+                return next(new AppError('The Integration feature is not enabled for this organization.', 403));
+            }
         }
 
         req.apiKey = context;
@@ -44,6 +50,18 @@ exports.authenticate = async (req, res, next) => {
     } catch (err) {
         next(err);
     }
+};
+
+// Organization endpoints have no meaning for a Personal Drive key: there is no
+// organization to read, no members to invite, and no approval flow to join.
+exports.requireOrganizationKey = (req, res, next) => {
+    if (req.apiKey?.isPersonal) {
+        return next(new AppError(
+            'This endpoint needs an organization API key. The key you used targets a Personal Drive.',
+            403
+        ));
+    }
+    next();
 };
 
 exports.requireScope = (scope) => (req, res, next) => {

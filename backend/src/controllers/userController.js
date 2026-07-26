@@ -2,6 +2,40 @@ const { z } = require('zod');
 const db = require('../config/db');
 const AppError = require('../utils/AppError');
 const bcrypt = require('bcrypt');
+const apiKeyService = require('../services/apiKeyService');
+
+// Personal Drive API keys. No organization, so no owner check and no billing
+// feature gate: such a key reaches only the caller's own drive.
+exports.listPersonalApiKeys = async (req, res, next) => {
+    try {
+        const keys = await apiKeyService.listPersonalKeys(req.user.id);
+        res.status(200).json({ status: 'success', data: { keys } });
+    } catch (err) {
+        next(err);
+    }
+};
+
+exports.createPersonalApiKey = async (req, res, next) => {
+    try {
+        const { name, scopes, expiresInDays } = req.body;
+        const { key, plaintext } = await apiKeyService.createPersonalKey(
+            req.user.id, { name, scopes, expiresInDays }
+        );
+        // `plaintext` is returned exactly once; it is not recoverable afterwards.
+        res.status(201).json({ status: 'success', data: { key, plaintext } });
+    } catch (err) {
+        next(err);
+    }
+};
+
+exports.revokePersonalApiKey = async (req, res, next) => {
+    try {
+        const revoked = await apiKeyService.revokePersonalKey(req.user.id, req.params.keyId);
+        res.status(200).json({ status: 'success', data: { key: revoked } });
+    } catch (err) {
+        next(err);
+    }
+};
 
 const updateProfileSchema = z.object({
     fullName: z.string().min(2).optional(),

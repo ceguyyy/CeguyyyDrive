@@ -3,6 +3,30 @@ const db = require('../config/db');
 class ApiKeyRepository {
     // key_hash is never selected: nothing outside the auth lookup needs it, and
     // not returning it keeps it out of logs and API responses by construction.
+    // Personal keys: organization_id IS NULL, scoped to one user's own drive.
+    async findPersonal(userId) {
+        const result = await db.query(
+            `SELECT id, organization_id, created_by, name, key_prefix, scopes,
+                    last_used_at, expires_at, revoked_at, created_at
+             FROM api_keys
+             WHERE organization_id IS NULL AND created_by = $1
+             ORDER BY created_at DESC`,
+            [userId]
+        );
+        return result.rows;
+    }
+
+    async revokePersonal(userId, keyId) {
+        const result = await db.query(
+            `UPDATE api_keys
+             SET revoked_at = CURRENT_TIMESTAMP
+             WHERE id = $1 AND created_by = $2 AND organization_id IS NULL AND revoked_at IS NULL
+             RETURNING id, name, revoked_at`,
+            [keyId, userId]
+        );
+        return result.rows[0];
+    }
+
     async findByOrganization(orgId) {
         const result = await db.query(
             `SELECT id, organization_id, created_by, name, key_prefix, scopes,

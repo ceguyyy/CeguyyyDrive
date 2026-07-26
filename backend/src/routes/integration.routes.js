@@ -26,22 +26,22 @@ router.post('/folders', apiKeyMiddleware.requireScope(SCOPE_WRITE), integrationC
 router.post('/files/upload-url', apiKeyMiddleware.requireScope(SCOPE_WRITE), integrationController.createUploadUrl);
 
 /* ── Organization ──────────────────────────────────────────────────────── */
-router.get('/organization', apiKeyMiddleware.requireScope(SCOPE_ORG_READ), integrationController.getOrganization);
-router.get('/organization/members', apiKeyMiddleware.requireScope(SCOPE_ORG_READ), integrationController.listMembers);
-router.get('/organization/roles', apiKeyMiddleware.requireScope(SCOPE_ORG_READ), integrationController.listRoles);
+router.get('/organization', apiKeyMiddleware.requireOrganizationKey, apiKeyMiddleware.requireScope(SCOPE_ORG_READ), integrationController.getOrganization);
+router.get('/organization/members', apiKeyMiddleware.requireOrganizationKey, apiKeyMiddleware.requireScope(SCOPE_ORG_READ), integrationController.listMembers);
+router.get('/organization/roles', apiKeyMiddleware.requireOrganizationKey, apiKeyMiddleware.requireScope(SCOPE_ORG_READ), integrationController.listRoles);
 
 // Its own scope: adding people to an organization is the one write here that
 // changes who can reach the data, so it is never granted by a read-only key.
-router.post('/organization/members', apiKeyMiddleware.requireScope(SCOPE_MEMBERS_WRITE), integrationController.inviteMember);
+router.post('/organization/members', apiKeyMiddleware.requireOrganizationKey, apiKeyMiddleware.requireScope(SCOPE_MEMBERS_WRITE), integrationController.inviteMember);
 
 /* ── Approvals ─────────────────────────────────────────────────────────── */
-router.get('/approval-templates', apiKeyMiddleware.requireScope(SCOPE_APPROVALS_READ), integrationController.listApprovalTemplates);
-router.get('/approvals/pending', apiKeyMiddleware.requireScope(SCOPE_APPROVALS_READ), integrationController.listPendingApprovals);
-router.get('/approvals/submitted', apiKeyMiddleware.requireScope(SCOPE_APPROVALS_READ), integrationController.listSubmittedRequests);
-router.get('/approvals/:requestId', apiKeyMiddleware.requireScope(SCOPE_APPROVALS_READ), integrationController.getApprovalDetails);
+router.get('/approval-templates', apiKeyMiddleware.requireOrganizationKey, apiKeyMiddleware.requireScope(SCOPE_APPROVALS_READ), integrationController.listApprovalTemplates);
+router.get('/approvals/pending', apiKeyMiddleware.requireOrganizationKey, apiKeyMiddleware.requireScope(SCOPE_APPROVALS_READ), integrationController.listPendingApprovals);
+router.get('/approvals/submitted', apiKeyMiddleware.requireOrganizationKey, apiKeyMiddleware.requireScope(SCOPE_APPROVALS_READ), integrationController.listSubmittedRequests);
+router.get('/approvals/:requestId', apiKeyMiddleware.requireOrganizationKey, apiKeyMiddleware.requireScope(SCOPE_APPROVALS_READ), integrationController.getApprovalDetails);
 
-router.post('/approvals', apiKeyMiddleware.requireScope(SCOPE_APPROVALS_WRITE), integrationController.submitForApproval);
-router.post('/approvals/:requestId/decision', apiKeyMiddleware.requireScope(SCOPE_APPROVALS_WRITE), integrationController.decideApproval);
-router.post('/approvals/:requestId/resubmit', apiKeyMiddleware.requireScope(SCOPE_APPROVALS_WRITE), integrationController.resubmitAfterRevision);
+router.post('/approvals', apiKeyMiddleware.requireOrganizationKey, apiKeyMiddleware.requireScope(SCOPE_APPROVALS_WRITE), integrationController.submitForApproval);
+router.post('/approvals/:requestId/decision', apiKeyMiddleware.requireOrganizationKey, apiKeyMiddleware.requireScope(SCOPE_APPROVALS_WRITE), integrationController.decideApproval);
+router.post('/approvals/:requestId/resubmit', apiKeyMiddleware.requireOrganizationKey, apiKeyMiddleware.requireScope(SCOPE_APPROVALS_WRITE), integrationController.resubmitAfterRevision);
 
 module.exports = router;

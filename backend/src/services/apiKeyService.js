@@ -66,25 +66,14 @@ class ApiKeyService {
             throw new AppError(`This organization already has ${MAX_KEYS_PER_ORG} active keys. Revoke one first.`, 400);
         }
 
-        let expiresAt = null;
-        if (expiresInDays !== undefined && expiresInDays !== null && expiresInDays !== '') {
-            const days = Number(expiresInDays);
-            if (!Number.isInteger(days) || days <= 0) {
-                throw new AppError('Expiry must be a whole number of days greater than zero.', 400);
-            }
-            expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
-        }
-
-        // randomBytes, not Math.random: this value is the credential.
-        const secret = crypto.randomBytes(SECRET_BYTES).toString('base64url');
-        const publicId = crypto.randomBytes(6).toString('hex');
-        const fullKey = `${KEY_PREFIX}_${publicId}_${secret}`;
+        const expiresAt = this.#parseExpiry(expiresInDays);
+        const { fullKey, keyPrefix } = this.#mintKey();
 
         const record = await apiKeyRepository.create({
             organizationId: orgId,
             createdBy: userId,
             name: label,
-            keyPrefix: `${KEY_PREFIX}_${publicId}`,
+            keyPrefix,
             keyHash: sha256(fullKey),
             scopes: requested,
             expiresAt
@@ -92,6 +81,72 @@ class ApiKeyService {
 
         // The only time the plaintext exists outside the caller's request.
         return { key: record, plaintext: fullKey };
+    }
+
+    /* ── Personal Drive keys ───────────────────────────────────────────── */
+
+    // No organization, so no owner check and no billing feature gate: the key
+    // reaches only the drive of the user who created it. Personal keys are
+    // always files-only — there is no organization to read or invite into.
+    async listPersonalKeys(userId) {
+        return await apiKeyRepository.findPersonal(userId);
+    }
+
+    async createPersonalKey(userId, { name, scopes, expiresInDays } = {}) {
+        const label = String(name || '').trim();
+        if (!label) throw new AppError('Give the key a name so you can recognise it later.', 400);
+
+        const requested = Array.isArray(scopes) && scopes.length > 0 ? scopes : [SCOPE_READ, SCOPE_WRITE];
+        const allowed = [SCOPE_READ, SCOPE_WRITE];
+        const invalid = requested.filter(s => !allowed.includes(s));
+        if (invalid.length > 0) {
+            throw new AppError(
+                `Personal Drive keys support only ${allowed.join(' and ')}. Rejected: ${invalid.join(', ')}.`,
+                400
+            );
+        }
+
+        const active = (await apiKeyRepository.findPersonal(userId)).filter(k => !k.revoked_at);
+        if (active.length >= MAX_KEYS_PER_ORG) {
+            throw new AppError(`You already have ${MAX_KEYS_PER_ORG} active personal keys. Revoke one first.`, 400);
+        }
+
+        const expiresAt = this.#parseExpiry(expiresInDays);
+        const { fullKey, keyPrefix } = this.#mintKey();
+
+        const record = await apiKeyRepository.create({
+            organizationId: null,
+            createdBy: userId,
+            name: label,
+            keyPrefix,
+            keyHash: sha256(fullKey),
+            scopes: requested,
+            expiresAt
+        });
+
+        return { key: record, plaintext: fullKey };
+    }
+
+    async revokePersonalKey(userId, keyId) {
+        const revoked = await apiKeyRepository.revokePersonal(userId, keyId);
+        if (!revoked) throw new AppError('API key not found, or already revoked.', 404);
+        return revoked;
+    }
+
+    #parseExpiry(expiresInDays) {
+        if (expiresInDays === undefined || expiresInDays === null || expiresInDays === '') return null;
+        const days = Number(expiresInDays);
+        if (!Number.isInteger(days) || days <= 0) {
+            throw new AppError('Expiry must be a whole number of days greater than zero.', 400);
+        }
+        return new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+    }
+
+    #mintKey() {
+        // randomBytes, not Math.random: this value is the credential.
+        const secret = crypto.randomBytes(SECRET_BYTES).toString('base64url');
+        const publicId = crypto.randomBytes(6).toString('hex');
+        return { fullKey: `${KEY_PREFIX}_${publicId}_${secret}`, keyPrefix: `${KEY_PREFIX}_${publicId}` };
     }
 
     async revokeKey(orgId, userId, keyId, actorRoleName = null) {
@@ -117,7 +172,10 @@ class ApiKeyService {
 
         return {
             keyId: record.id,
+            // null means a Personal Drive key: it acts on the user's own drive
+            // rather than an organization's.
             organizationId: record.organization_id,
+            isPersonal: record.organization_id === null,
             userId: record.created_by,
             scopes: record.scopes || []
         };

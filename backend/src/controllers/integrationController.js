@@ -1,4 +1,7 @@
 const orgDriveService = require('../services/orgDriveService');
+const folderService = require('../services/folderService');
+const fileService = require('../services/fileService');
+const cosService = require('../services/cosService');
 const organizationService = require('../services/organizationService');
 const organizationRepository = require('../repositories/organizationRepository');
 const approvalService = require('../services/approvalService');
@@ -13,12 +16,24 @@ const approvalTemplateService = require('../services/approvalTemplateService');
 
 /* ── Drive ─────────────────────────────────────────────────────────────── */
 
+// A personal key carries no organization, so each drive handler routes to the
+// personal services instead. The two drives are separate stores with separate
+// ownership rules; they are not the same call with a different id.
+
 exports.listContents = async (req, res, next) => {
     try {
-        const { organizationId, userId } = req.apiKey;
-        const contents = await orgDriveService.listDriveContents(
-            organizationId, req.params.folderId || null, userId
-        );
+        const { organizationId, userId, isPersonal } = req.apiKey;
+        const folderId = req.params.folderId || null;
+
+        if (isPersonal) {
+            const [folders, files] = await Promise.all([
+                folderService.listFolders(folderId, userId),
+                fileService.listFiles(folderId, userId)
+            ]);
+            return res.status(200).json({ status: 'success', data: { folders, files } });
+        }
+
+        const contents = await orgDriveService.listDriveContents(organizationId, folderId, userId);
         res.status(200).json({ status: 'success', data: contents });
     } catch (err) {
         next(err);
@@ -27,11 +42,13 @@ exports.listContents = async (req, res, next) => {
 
 exports.createFolder = async (req, res, next) => {
     try {
-        const { organizationId, userId } = req.apiKey;
+        const { organizationId, userId, isPersonal } = req.apiKey;
         const { name, parentFolderId } = req.body;
-        const folder = await orgDriveService.createSubfolder(
-            organizationId, name, parentFolderId || null, userId
-        );
+
+        const folder = isPersonal
+            ? await folderService.createFolder(name, parentFolderId || null, userId)
+            : await orgDriveService.createSubfolder(organizationId, name, parentFolderId || null, userId);
+
         res.status(201).json({ status: 'success', data: { folder } });
     } catch (err) {
         next(err);
@@ -42,8 +59,23 @@ exports.createFolder = async (req, res, next) => {
 // URL, and the caller PUTs the bytes straight to object storage.
 exports.createUploadUrl = async (req, res, next) => {
     try {
-        const { organizationId, userId } = req.apiKey;
+        const { organizationId, userId, isPersonal } = req.apiKey;
         const { fileName, size, mimeType, folderId } = req.body;
+
+        if (isPersonal) {
+            // Mirrors cosController.generateUploadUrl: the file record is
+            // reserved first, then the presigned URL is signed for its key.
+            const storageKey = cosService.generateObjectKey(userId, fileName);
+            const file = await fileService.createFileRecord(
+                fileName, size, mimeType, storageKey, folderId || null, userId
+            );
+            const uploadUrl = await cosService.getPresignedUploadUrl(storageKey, mimeType);
+            return res.status(200).json({
+                status: 'success',
+                data: { uploadUrl, fileId: file.id, storageKey }
+            });
+        }
+
         const result = await orgDriveService.generateUploadUrl(
             organizationId, fileName, size, mimeType, folderId || null, userId
         );
@@ -55,7 +87,16 @@ exports.createUploadUrl = async (req, res, next) => {
 
 exports.createDownloadUrl = async (req, res, next) => {
     try {
-        const { organizationId, userId } = req.apiKey;
+        const { organizationId, userId, isPersonal } = req.apiKey;
+
+        if (isPersonal) {
+            const file = await fileService.getAccessibleFile(req.params.fileId, userId);
+            const downloadUrl = await cosService.getPresignedDownloadUrl(
+                file.storage_key, true, file.mime_type
+            );
+            return res.status(200).json({ status: 'success', data: { downloadUrl } });
+        }
+
         const result = await orgDriveService.generateDownloadUrl(
             organizationId, req.params.fileId, userId
         );

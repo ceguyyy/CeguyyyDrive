@@ -30,6 +30,14 @@ const formatDate = (value) => (value ? new Date(value).toLocaleString() : '—')
 // cannot be unchecked to nothing.
 const DEFAULT_SCOPES = ['files:read', 'files:write'];
 
+// Sentinel for "my own drive" in the target selector. Not a uuid, so it cannot
+// collide with an organization id.
+const PERSONAL_TARGET = '__personal__';
+
+// A personal key has no organization to read or invite into, so the server
+// rejects the organization scopes outright.
+const PERSONAL_SCOPES = ['files:read', 'files:write'];
+
 function CodeBlock({ children }) {
     const [copied, setCopied] = useState(false);
     const copy = () => {
@@ -148,25 +156,35 @@ export default function IntegrationPage() {
         ? (allOrgsData ?? orgsData?.organizations ?? [])
         : (orgsData?.organizations ?? []);
 
-    // Local to this page on purpose: switching the org here must not move the
+    // Local to this page on purpose: switching the target here must not move the
     // whole app's drive context the way the Profile Settings switcher does.
-    const [selectedOrgId, setSelectedOrgId] = useState(null);
-    const activeOrg = selectableOrgs.find(o => o.id === (selectedOrgId || activeOrgId))
-        || selectableOrgs[0];
+    const [selectedTarget, setSelectedTarget] = useState(null);
+    const isPersonalTarget = selectedTarget === PERSONAL_TARGET;
+    const activeOrg = isPersonalTarget
+        ? null
+        : (selectableOrgs.find(o => o.id === (selectedTarget || activeOrgId)) || selectableOrgs[0]);
 
-    // Mirrors apiKeyService.assertCanManageKeys, which is what actually enforces it.
-    const canManage = activeOrg?.owner_id === user?.id || superAdmin;
-    const featureEnabled = activeOrg?.feature_integration_enabled === true;
+    // A personal key needs no owner check and no billing feature: it reaches
+    // nothing but the caller's own drive.
+    // For organizations this mirrors apiKeyService.assertCanManageKeys.
+    const canManage = isPersonalTarget || activeOrg?.owner_id === user?.id || superAdmin;
+    const featureEnabled = isPersonalTarget || activeOrg?.feature_integration_enabled === true;
+
+    const targetLabel = isPersonalTarget ? 'My Personal Drive' : activeOrg?.name;
+    const keysPath = isPersonalTarget ? '/users/me/api-keys' : `/organizations/${activeOrg?.id}/api-keys`;
+    const availableScopes = isPersonalTarget
+        ? SCOPES.filter(s => PERSONAL_SCOPES.includes(s.value))
+        : SCOPES;
 
     const { data: keysData, isLoading } = useQuery({
-        queryKey: ['api-keys', activeOrg?.id],
+        queryKey: ['api-keys', isPersonalTarget ? 'personal' : activeOrg?.id],
         queryFn: async () => {
-            const res = await api.get(`/organizations/${activeOrg.id}/api-keys`);
+            const res = await api.get(keysPath);
             return res.data.data.keys;
         },
         // Not gated on featureEnabled: a Super Admin manages keys for an
         // organization before switching the feature on.
-        enabled: !!activeOrg?.id && canManage
+        enabled: (isPersonalTarget || !!activeOrg?.id) && canManage
     });
     const keys = keysData || [];
     const pagination = usePagination(keys, 10);
@@ -175,14 +193,14 @@ export default function IntegrationPage() {
         setSaving(true);
         setError('');
         try {
-            const res = await api.post(`/organizations/${activeOrg.id}/api-keys`, {
+            const res = await api.post(keysPath, {
                 name, scopes: selectedScopes, expiresInDays: expiresInDays || undefined
             });
             setIssuedKey(res.data.data.plaintext);
             setCreateOpen(false);
             setName('');
             setExpiresInDays('');
-            queryClient.invalidateQueries({ queryKey: ['api-keys', activeOrg.id] });
+            queryClient.invalidateQueries({ queryKey: ['api-keys', isPersonalTarget ? 'personal' : activeOrg?.id] });
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to create the API key.');
         } finally {
@@ -193,12 +211,12 @@ export default function IntegrationPage() {
     // Built in the browser and released immediately; the file deliberately
     // contains an empty `apiKey` variable, never a real key.
     const downloadPostmanCollection = () => {
-        const collection = buildPostmanCollection(INTEGRATION_BASE, activeOrg.name);
+        const collection = buildPostmanCollection(INTEGRATION_BASE, targetLabel);
         const blob = new Blob([JSON.stringify(collection, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `ceguyyydrive-integration-${activeOrg.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.postman_collection.json`;
+        link.download = `ceguyyydrive-integration-${targetLabel.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.postman_collection.json`;
         link.click();
         URL.revokeObjectURL(url);
     };
@@ -206,9 +224,9 @@ export default function IntegrationPage() {
     const submitRevoke = async () => {
         setSaving(true);
         try {
-            await api.delete(`/organizations/${activeOrg.id}/api-keys/${keyToRevoke.id}`);
+            await api.delete(`${keysPath}/${keyToRevoke.id}`);
             setKeyToRevoke(null);
-            queryClient.invalidateQueries({ queryKey: ['api-keys', activeOrg.id] });
+            queryClient.invalidateQueries({ queryKey: ['api-keys', isPersonalTarget ? 'personal' : activeOrg?.id] });
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to revoke the key.');
         } finally {
@@ -216,7 +234,7 @@ export default function IntegrationPage() {
         }
     };
 
-    if (!activeOrg) {
+    if (!activeOrg && !isPersonalTarget) {
         return (
             <Box sx={{ p: 4 }}>
                 <Alert severity="info">Select an organization to manage its integrations.</Alert>
@@ -228,7 +246,7 @@ export default function IntegrationPage() {
         return (
             <Box sx={{ p: 4 }}>
                 <Alert severity="warning">
-                    Only the owner of <strong>{activeOrg.name}</strong>, or a platform administrator,
+                    Only the owner of <strong>{targetLabel}</strong>, or a platform administrator,
                     can manage API keys.
                 </Alert>
             </Box>
@@ -242,7 +260,7 @@ export default function IntegrationPage() {
         return (
             <Box sx={{ p: 4 }}>
                 <Alert severity="info">
-                    The Integration feature is not enabled for <strong>{activeOrg.name}</strong>.
+                    The Integration feature is not enabled for <strong>{targetLabel}</strong>.
                     Ask your platform administrator to switch it on in the Billing Console.
                 </Alert>
             </Box>
@@ -256,32 +274,42 @@ export default function IntegrationPage() {
                 <Box>
                     <Typography variant="h5" fontWeight={800}>Integration</Typography>
                     <Typography variant="body2" color="text.secondary">
-                        Connect <strong>{activeOrg.name}</strong>'s Company Drive to other systems.
+                        {isPersonalTarget ? <>Connect <strong>your Personal Drive</strong> to other systems.</> : <>Connect <strong>{targetLabel}</strong>&apos;s Company Drive to other systems.</>}
                     </Typography>
                 </Box>
             </Stack>
 
-            {selectableOrgs.length > 1 && (
-                <TextField
-                    select
-                    size="small"
-                    label="Organization"
-                    value={activeOrg.id}
-                    onChange={(e) => setSelectedOrgId(e.target.value)}
-                    sx={{ mb: 3, minWidth: 280 }}
-                    helperText={superAdmin ? 'As a platform admin you can manage any organization.' : ' '}
-                >
+            <TextField
+                select
+                size="small"
+                label="Integration target"
+                value={isPersonalTarget ? PERSONAL_TARGET : activeOrg?.id || ''}
+                onChange={(e) => setSelectedTarget(e.target.value)}
+                sx={{ mb: 3, minWidth: 300 }}
+                helperText={
+                    isPersonalTarget
+                        ? 'Personal keys reach only your own drive — no organization endpoints.'
+                        : (superAdmin ? 'As a platform admin you can manage any organization.' : ' ')
+                }
+            >
+                    <MenuItem value={PERSONAL_TARGET}>My Personal Drive</MenuItem>
                     {selectableOrgs.map(o => (
                         <MenuItem key={o.id} value={o.id}>
                             {o.name}{o.feature_integration_enabled ? '' : ' — Integration off'}
                         </MenuItem>
                     ))}
-                </TextField>
+            </TextField>
+
+            {isPersonalTarget && (
+                <Alert severity="info" sx={{ mb: 2 }}>
+                    A Personal Drive key reaches only your own files. The organization, member, and approval
+                    endpoints below need an organization key and will return 403 with this one.
+                </Alert>
             )}
 
             {!featureEnabled && (
                 <Alert severity="warning" sx={{ mb: 2 }}>
-                    Integration is switched off for <strong>{activeOrg.name}</strong>. You can manage keys here,
+                    Integration is switched off for <strong>{targetLabel}</strong>. You can manage keys here,
                     but every API request using them is rejected until you enable the feature in the Billing Console.
                 </Alert>
             )}
@@ -484,7 +512,7 @@ export default function IntegrationPage() {
                                 Grant only what the integration needs. A key that just reads files should not
                                 be able to invite people or approve documents.
                             </Typography>
-                            {SCOPES.map(scope => (
+                            {availableScopes.map(scope => (
                                 <Box key={scope.value} sx={{ mb: 0.5 }}>
                                     <FormControlLabel
                                         control={
