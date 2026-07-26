@@ -207,7 +207,7 @@ export default function IntegrationPage() {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `ceguyyydrive-integration-${targetLabel.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.postman_collection.json`;
+        link.download = `abugreysoft-box-integration-${targetLabel.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.postman_collection.json`;
         link.click();
         URL.revokeObjectURL(url);
     };

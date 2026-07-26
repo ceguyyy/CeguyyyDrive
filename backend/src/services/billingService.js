@@ -28,7 +28,10 @@ function randomKeySegment(length = KEY_RANDOM_LENGTH) {
 async function generateUniqueLicenseKey(planName) {
     const year = new Date().getFullYear();
     for (let attempt = 0; attempt < MAX_KEY_ATTEMPTS; attempt += 1) {
-        const candidate = `CEGUYY-${planName.toUpperCase()}-${year}-${randomKeySegment()}`;
+        // Licence keys issued before the rename begin with CEGUYY- and remain
+        // valid: they are stored and looked up whole, so the prefix is branding
+        // rather than something the redemption path parses.
+        const candidate = `ABX-${planName.toUpperCase()}-${year}-${randomKeySegment()}`;
         const existing = await billingRepository.findLicenseByKey(candidate);
         if (!existing) return candidate;
     }

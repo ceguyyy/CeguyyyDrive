@@ -99,7 +99,7 @@ export default function Sidebar() {
         if (currentOrg && currentOrg.custom_app_title && currentOrg.custom_app_title.trim() !== '') {
             document.title = `${currentOrg.custom_app_title.trim()} - Cloud Storage`;
         } else {
-            document.title = 'CeguyyyDrive - Enterprise Cloud Storage';
+            document.title = 'AbuGreySoft Box - Enterprise Cloud Storage';
         }
     }, [currentOrg]);
 
@@ -161,7 +161,7 @@ export default function Sidebar() {
                         )}
                         {showFull && (
                             <Typography variant="subtitle1" fontWeight="700" noWrap>
-                                {currentOrg && currentOrg.custom_app_title && currentOrg.custom_app_title.trim() !== '' ? currentOrg.custom_app_title.trim() : 'CeguyyyDrive'}
+                                {currentOrg && currentOrg.custom_app_title && currentOrg.custom_app_title.trim() !== '' ? currentOrg.custom_app_title.trim() : 'AbuGreySoft Box'}
                             </Typography>
                         )}
                     </Box>

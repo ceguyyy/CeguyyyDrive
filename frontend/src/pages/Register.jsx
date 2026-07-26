@@ -180,7 +180,7 @@ export default function Register({ platformAdminOnly = false }) {
                 <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', flexDirection: 'column' }}>
                     <CloudLogo size={56} sx={{ mb: 1.5 }} />
                     <Typography component="h1" variant="h5" fontWeight="800" sx={{ letterSpacing: '-0.5px' }}>
-                        {platformAdminOnly ? 'Platform Admin Registration' : 'Create CeguyyyDrive Account'}
+                        {platformAdminOnly ? 'Platform Admin Registration' : 'Create AbuGreySoft Box Account'}
                     </Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                         {platformAdminOnly

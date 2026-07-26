@@ -858,7 +858,7 @@ export default function BillingManagementPage() {
                                             value={newCustomAppTitle}
                                             onChange={(e) => setNewCustomAppTitle(e.target.value)}
                                             sx={{ mb: 2 }}
-                                            helperText="Overrides default CeguyyyDrive title for this workspace"
+                                            helperText="Overrides default AbuGreySoft Box title for this workspace"
                                         />
                                         <Box>
                                             <TextField
@@ -1172,7 +1172,7 @@ export default function BillingManagementPage() {
                                 value={editCustomAppTitle}
                                 onChange={(e) => setEditCustomAppTitle(e.target.value)}
                                 sx={{ mb: 2 }}
-                                helperText="Overrides default CeguyyyDrive title for this workspace"
+                                helperText="Overrides default AbuGreySoft Box title for this workspace"
                             />
                             <Box sx={{ flex: 1 }}>
                                 <TextField

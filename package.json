@@ -1,8 +1,8 @@
 {
-  "name": "ceguyyydrive-monorepo",
+  "name": "abugreysoft-box-monorepo",
   "version": "1.0.0",
   "private": true,
-  "description": "CeguyyyDrive Cloud Storage System Monorepo",
+  "description": "AbuGreySoft Box Cloud Storage System Monorepo",
   "scripts": {
     "dev": "npx -y concurrently \"npm --prefix backend run dev\" \"npm --prefix frontend run dev\"",
     "dev:backend": "npm --prefix backend run dev",

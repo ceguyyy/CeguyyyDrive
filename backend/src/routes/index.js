@@ -22,7 +22,7 @@ const router = express.Router();
 router.get('/health', (req, res) => {
     res.status(200).json({
         status: 'success',
-        message: 'CeguyyyDrive API is running smoothly.'
+        message: 'AbuGreySoft Box API is running smoothly.'
     });
 });
 

@@ -12,10 +12,17 @@ const AppError = require('../utils/AppError');
  */
 exports.authenticate = async (req, res, next) => {
     try {
-        const header = req.headers['x-api-key']
-            || (req.headers.authorization?.startsWith('Bearer cgd_')
-                ? req.headers.authorization.slice(7)
-                : null);
+        // Every recognised prefix is accepted, not just the current one: keys
+        // minted before the AbuGreySoft rename still begin with 'cgd' and must
+        // keep working. X-API-Key needs no prefix check at all — this branch
+        // exists only to tell an API key apart from a JWT in the same header.
+        const bearer = req.headers.authorization?.startsWith('Bearer ')
+            ? req.headers.authorization.slice(7)
+            : null;
+        const looksLikeApiKey = bearer
+            && apiKeyService.RECOGNISED_KEY_PREFIXES.some(p => bearer.startsWith(`${p}_`));
+
+        const header = req.headers['x-api-key'] || (looksLikeApiKey ? bearer : null);
 
         if (!header) {
             return next(new AppError('Missing API key. Send it in the X-API-Key header.', 401));

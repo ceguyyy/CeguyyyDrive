@@ -7,11 +7,11 @@ class PlunkService {
     }
 
     async sendOtpEmail(email, otpCode) {
-        const subject = `🔐 Your CeguyyyDrive Verification Code: ${otpCode}`;
+        const subject = `🔐 Your AbuGreySoft Box Verification Code: ${otpCode}`;
         const htmlBody = `
             <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px;">
                 <div style="text-align: center; margin-bottom: 24px;">
-                    <h1 style="color: #1e293b; font-size: 24px; font-weight: 700; margin: 0;">CeguyyyDrive</h1>
+                    <h1 style="color: #1e293b; font-size: 24px; font-weight: 700; margin: 0;">AbuGreySoft Box</h1>
                     <p style="color: #64748b; font-size: 14px; margin-top: 4px;">Secure Enterprise Cloud Storage</p>
                 </div>
                 <div style="background-color: #f8fafc; padding: 24px; border-radius: 8px; text-align: center; margin-bottom: 24px; border: 1px dashed #cbd5e1;">
@@ -24,7 +24,7 @@ class PlunkService {
                     This verification code is valid for <strong>5 minutes</strong>. If you did not request this code, please ignore this email.
                 </p>
                 <div style="border-top: 1px solid #e2e8f0; padding-top: 16px; text-align: center;">
-                    <p style="color: #94a3b8; font-size: 12px; margin: 0;">&copy; ${new Date().getFullYear()} CeguyyyDrive. All rights reserved.</p>
+                    <p style="color: #94a3b8; font-size: 12px; margin: 0;">&copy; ${new Date().getFullYear()} AbuGreySoft Box. All rights reserved.</p>
                 </div>
             </div>
         `;
@@ -62,11 +62,11 @@ class PlunkService {
     }
 
     async sendPasswordResetEmail(email, otpCode, expiryMinutes = 15) {
-        const subject = `🔑 Reset your CeguyyyDrive password: ${otpCode}`;
+        const subject = `🔑 Reset your AbuGreySoft Box password: ${otpCode}`;
         const htmlBody = `
             <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px;">
                 <div style="text-align: center; margin-bottom: 24px;">
-                    <h1 style="color: #1e293b; font-size: 24px; font-weight: 700; margin: 0;">CeguyyyDrive</h1>
+                    <h1 style="color: #1e293b; font-size: 24px; font-weight: 700; margin: 0;">AbuGreySoft Box</h1>
                     <p style="color: #64748b; font-size: 14px; margin-top: 4px;">Password Reset Request</p>
                 </div>
                 <div style="background-color: #f8fafc; padding: 24px; border-radius: 8px; text-align: center; margin-bottom: 24px; border: 1px dashed #cbd5e1;">
@@ -80,7 +80,7 @@ class PlunkService {
                     If you did not request a password reset, ignore this email &mdash; your password stays unchanged.
                 </p>
                 <div style="border-top: 1px solid #e2e8f0; padding-top: 16px; text-align: center;">
-                    <p style="color: #94a3b8; font-size: 12px; margin: 0;">&copy; ${new Date().getFullYear()} CeguyyyDrive. All rights reserved.</p>
+                    <p style="color: #94a3b8; font-size: 12px; margin: 0;">&copy; ${new Date().getFullYear()} AbuGreySoft Box. All rights reserved.</p>
                 </div>
             </div>
         `;
@@ -118,16 +118,16 @@ class PlunkService {
     }
 
     async sendLicenseKeyEmail(email, licenseKey, planName, gmtLocation = 'GMT+7 (Asia/Jakarta)') {
-        const subject = `🎉 Welcome to CeguyyyDrive! Your ${planName} Organization License Key`;
+        const subject = `🎉 Welcome to AbuGreySoft Box! Your ${planName} Organization License Key`;
         const fromEmail = process.env.PLUNK_FROM_EMAIL || 'noreply@christiangunawan.my.id';
         const htmlBody = `
             <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px;">
                 <div style="text-align: center; margin-bottom: 24px;">
-                    <h1 style="color: #1e293b; font-size: 24px; font-weight: 700; margin: 0;">CeguyyyDrive</h1>
+                    <h1 style="color: #1e293b; font-size: 24px; font-weight: 700; margin: 0;">AbuGreySoft Box</h1>
                     <p style="color: #64748b; font-size: 14px; margin-top: 4px;">Enterprise Workspace Provisioned</p>
                 </div>
                 <p style="color: #334155; font-size: 16px; line-height: 1.5; margin-bottom: 20px;">
-                    Hello, your CeguyyyDrive Developer has provisioned a new <strong>${planName} Plan</strong> organization license for your account!
+                    Hello, your AbuGreySoft Box Developer has provisioned a new <strong>${planName} Plan</strong> organization license for your account!
                 </p>
                 <div style="background-color: #fef3c7; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 24px; border: 1px solid #fde68a;">
                     <p style="color: #92400e; font-size: 13px; font-weight: 600; text-transform: uppercase; margin: 0 0 8px 0;">Your Activation License Key</p>
@@ -137,10 +137,10 @@ class PlunkService {
                     <p style="color: #78350f; font-size: 13px; font-weight: 500; margin: 12px 0 0 0;">🌍 Assigned Timezone: <strong>${gmtLocation}</strong></p>
                 </div>
                 <p style="color: #64748b; font-size: 14px; line-height: 1.5; margin-bottom: 24px;">
-                    To activate your organization, visit the CeguyyyDrive registration page, select <strong>"Register as Organization Owner"</strong>, and enter your email address (<strong>${email}</strong>) along with the License Key above.
+                    To activate your organization, visit the AbuGreySoft Box registration page, select <strong>"Register as Organization Owner"</strong>, and enter your email address (<strong>${email}</strong>) along with the License Key above.
                 </p>
                 <div style="border-top: 1px solid #e2e8f0; padding-top: 16px; text-align: center;">
-                    <p style="color: #94a3b8; font-size: 12px; margin: 0;">&copy; ${new Date().getFullYear()} CeguyyyDrive. All rights reserved.</p>
+                    <p style="color: #94a3b8; font-size: 12px; margin: 0;">&copy; ${new Date().getFullYear()} AbuGreySoft Box. All rights reserved.</p>
                 </div>
             </div>
         `;
@@ -177,7 +177,7 @@ class PlunkService {
     }
 
     async sendOrgInviteEmail(email, { orgName, orgId, roleName, inviterName }) {
-        const subject = `📨 You've been invited to join ${orgName} on CeguyyyDrive`;
+        const subject = `📨 You've been invited to join ${orgName} on AbuGreySoft Box`;
         const fromEmail = process.env.PLUNK_FROM_EMAIL || 'noreply@christiangunawan.my.id';
 
         // CORS_ORIGIN may hold a comma-separated list; the first entry is the app.
@@ -191,7 +191,7 @@ class PlunkService {
         const htmlBody = `
             <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px;">
                 <div style="text-align: center; margin-bottom: 24px;">
-                    <h1 style="color: #1e293b; font-size: 24px; font-weight: 700; margin: 0;">CeguyyyDrive</h1>
+                    <h1 style="color: #1e293b; font-size: 24px; font-weight: 700; margin: 0;">AbuGreySoft Box</h1>
                     <p style="color: #64748b; font-size: 14px; margin-top: 4px;">Secure Enterprise Cloud Storage</p>
                 </div>
                 <p style="color: #334155; font-size: 16px; line-height: 1.5; margin-bottom: 20px;">
@@ -212,7 +212,7 @@ class PlunkService {
                     Use this email address (<strong>${email}</strong>) when registering so your invitation is matched automatically.
                 </p>
                 <div style="border-top: 1px solid #e2e8f0; padding-top: 16px; text-align: center;">
-                    <p style="color: #94a3b8; font-size: 12px; margin: 0;">&copy; ${new Date().getFullYear()} CeguyyyDrive. All rights reserved.</p>
+                    <p style="color: #94a3b8; font-size: 12px; margin: 0;">&copy; ${new Date().getFullYear()} AbuGreySoft Box. All rights reserved.</p>
                 </div>
             </div>
         `;

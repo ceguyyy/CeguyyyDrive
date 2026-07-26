@@ -1,7 +1,7 @@
 {
-  "name": "ceguyyydrive-backend",
+  "name": "abugreysoft-box-backend",
   "version": "1.0.0",
-  "description": "Backend API for CeguyyyDrive",
+  "description": "Backend API for AbuGreySoft Box",
   "main": "src/index.js",
   "scripts": {
     "dev": "nodemon src/index.js",

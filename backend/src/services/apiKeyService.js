@@ -3,7 +3,14 @@ const apiKeyRepository = require('../repositories/apiKeyRepository');
 const organizationRepository = require('../repositories/organizationRepository');
 const AppError = require('../utils/AppError');
 
-const KEY_PREFIX = 'cgd';
+// New keys are minted with this prefix. Keys issued before the rename still
+// carry 'cgd' and keep working: resolve() hashes whatever string is presented
+// and matches it whole, so the prefix is a label rather than a lookup key.
+// LEGACY_KEY_PREFIXES exists only for the Authorization-header shortcut, which
+// has to recognise a key by sight before hashing it.
+const KEY_PREFIX = 'abx';
+const LEGACY_KEY_PREFIXES = ['cgd'];
+const RECOGNISED_KEY_PREFIXES = [KEY_PREFIX, ...LEGACY_KEY_PREFIXES];
 const SECRET_BYTES = 32;
 const MAX_KEYS_PER_ORG = 20;
 
@@ -193,3 +200,4 @@ module.exports.SCOPE_MEMBERS_WRITE = SCOPE_MEMBERS_WRITE;
 module.exports.SCOPE_APPROVALS_READ = SCOPE_APPROVALS_READ;
 module.exports.SCOPE_APPROVALS_WRITE = SCOPE_APPROVALS_WRITE;
 module.exports.VALID_SCOPES = VALID_SCOPES;
+module.exports.RECOGNISED_KEY_PREFIXES = RECOGNISED_KEY_PREFIXES;

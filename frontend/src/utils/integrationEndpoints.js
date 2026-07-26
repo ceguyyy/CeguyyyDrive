@@ -303,7 +303,7 @@ export function curlFor(endpoint, baseUrl) {
 export function buildPostmanCollection(baseUrl, orgName) {
     return {
         info: {
-            name: `CeguyyyDrive Integration — ${orgName}`,
+            name: `AbuGreySoft Box Integration — ${orgName}`,
             description:
                 'Set the `apiKey` collection variable to your key. It is sent as X-API-Key on every request. '
                 + 'The organization is determined by the key, so no organization id is ever passed.',

@@ -7,7 +7,7 @@ class TelegramService {
     }
 
     async sendOtpMessage(email, otpCode) {
-        const text = `🔐 *CeguyyyDrive Login OTP*\n\nUser: \`${email}\`\nOTP Code: *${otpCode}*\n\n⏳ Valid for 5 minutes.`;
+        const text = `🔐 *AbuGreySoft Box Login OTP*\n\nUser: \`${email}\`\nOTP Code: *${otpCode}*\n\n⏳ Valid for 5 minutes.`;
 
         if (!this.botToken || !this.chatId) {
             console.log('\n======================================================');

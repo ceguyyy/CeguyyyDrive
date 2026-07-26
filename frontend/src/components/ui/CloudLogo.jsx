@@ -1,60 +1,54 @@
-import React from 'react';
 import { Box } from '@mui/material';
 
+/**
+ * The AbuGreySoft mark: a charcoal field carrying a light rosette, with the
+ * brand's orange / red / blue bar down the right edge.
+ *
+ * Drawn as inline SVG rather than shipped as an image so it stays crisp at
+ * every size, needs no network request, and inherits no background.
+ *
+ * The name is kept for now: it is imported in eight places, and renaming the
+ * file is a separate change from rebranding what it draws.
+ */
 export default function CloudLogo({ size = 32, sx, ...props }) {
-    const width = size;
-    const height = Math.round(size * 0.72);
-
+    // The mark is square, unlike the cloud it replaces, which was 120x85.
     return (
         <Box
             component="svg"
-            viewBox="0 0 120 85"
-            width={width}
-            height={height}
-            fill="none"
+            viewBox="0 0 360 360"
+            width={size}
+            height={size}
             xmlns="http://www.w3.org/2000/svg"
+            role="img"
+            aria-label="AbuGreySoft"
             sx={{ display: 'inline-block', verticalAlign: 'middle', flexShrink: 0, ...sx }}
             {...props}
         >
-            <defs>
-                <linearGradient id="greyCloudGrad" x1="10" y1="80" x2="100" y2="10" gradientUnits="userSpaceOnUse">
-                    <stop offset="0%" stopColor="#374151" />
-                    <stop offset="45%" stopColor="#4B5563" />
-                    <stop offset="75%" stopColor="#6B7280" />
-                    <stop offset="100%" stopColor="#9CA3AF" />
-                </linearGradient>
-            </defs>
+            {/* Charcoal field */}
+            <rect x="0" y="0" width="240" height="360" fill="#3A3833" />
 
-            {/* Solid Smooth Cloud Base (Grey) */}
-            <path
-                d="M 22 75 H 92 C 103 75 112 66 112 55 C 112 45 104 37 94 36 C 91 23 80 14 66 14 C 57 14 49 18 43 25 C 40 23 35 21 30 21 C 18 21 8 30 8 42 C 8 45 8.8 48 10 51 C 4.5 54 1 60.5 1 67 C 1 72 6 75 13 75 Z"
-                fill="url(#greyCloudGrad)"
+            {/* Brand bar */}
+            <rect x="240" y="0" width="120" height="120" fill="#F5A210" />
+            <rect x="240" y="120" width="120" height="120" fill="#EE5458" />
+            <rect x="240" y="240" width="120" height="120" fill="#1B77D2" />
+
+            {/* Rosette: six petals around a centre, unioned into one shape so the
+                overlaps do not show as seams at small sizes. */}
+            <g fill="#D9D9D9">
+                <circle cx="122" cy="180" r="52" />
+                <circle cx="122" cy="128" r="40" />
+                <circle cx="167" cy="154" r="40" />
+                <circle cx="167" cy="206" r="40" />
+                <circle cx="122" cy="232" r="40" />
+                <circle cx="77" cy="206" r="40" />
+                <circle cx="77" cy="154" r="40" />
+            </g>
+
+            {/* The charcoal shows through the centre as an octagon. */}
+            <polygon
+                points="116,167 128,167 135,174 135,186 128,193 116,193 109,186 109,174"
+                fill="#3A3833"
             />
-
-            {/* Cutout / Dissolving Pixel Matrix on Top-Right Corner */}
-            {/* Row 1 (y=14) */}
-            <rect x="66" y="14" width="7" height="7" fill="#6B7280" rx="1" />
-            <rect x="75" y="14" width="7" height="7" fill="#9CA3AF" rx="1" />
-            <rect x="84" y="14" width="7" height="7" fill="#D1D5DB" rx="1" />
-            <rect x="93" y="14" width="7" height="7" fill="#E5E7EB" rx="1" opacity="0.8" />
-            <rect x="102" y="14" width="6" height="6" fill="#F3F4F6" rx="1" opacity="0.6" />
-
-            {/* Row 2 (y=23) */}
-            <rect x="75" y="23" width="7" height="7" fill="#4B5563" rx="1" />
-            <rect x="84" y="23" width="7" height="7" fill="#6B7280" rx="1" />
-            <rect x="93" y="23" width="7" height="7" fill="#9CA3AF" rx="1" />
-            <rect x="102" y="23" width="7" height="7" fill="#D1D5DB" rx="1" opacity="0.75" />
-
-            {/* Row 3 (y=32) */}
-            <rect x="84" y="32" width="7" height="7" fill="#4B5563" rx="1" />
-            <rect x="93" y="32" width="7" height="7" fill="#6B7280" rx="1" />
-            <rect x="102" y="32" width="7" height="7" fill="#9CA3AF" rx="1" opacity="0.8" />
-            <rect x="111" y="23" width="6" height="6" fill="#E5E7EB" rx="1" opacity="0.5" />
-
-            {/* Floating Pixel Particles (Upper Right Dispersion) */}
-            <rect x="102" y="5" width="5" height="5" fill="#9CA3AF" rx="1" opacity="0.9" />
-            <rect x="111" y="12" width="5" height="5" fill="#D1D5DB" rx="1" opacity="0.7" />
-            <rect x="118" y="4" width="4" height="4" fill="#E5E7EB" rx="1" opacity="0.5" />
         </Box>
     );
 }
