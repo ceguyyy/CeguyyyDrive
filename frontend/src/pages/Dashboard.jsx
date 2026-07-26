@@ -400,14 +400,16 @@ export default function Dashboard() {
                         )}
                     </Breadcrumbs>
                     <Tooltip title="Refresh">
-                        <IconButton 
-                            size="small" 
-                            onClick={() => refetch()} 
-                            disabled={isRefetching}
-                            sx={{ color: 'text.secondary' }}
-                        >
-                            <RefreshIcon fontSize="small" sx={{ transform: isRefetching ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }} />
-                        </IconButton>
+                        <span>
+                            <IconButton 
+                                size="small" 
+                                onClick={() => refetch()} 
+                                disabled={isRefetching}
+                                sx={{ color: 'text.secondary' }}
+                            >
+                                <RefreshIcon fontSize="small" sx={{ transform: isRefetching ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }} />
+                            </IconButton>
+                        </span>
                     </Tooltip>
                 </Box>
                 )}

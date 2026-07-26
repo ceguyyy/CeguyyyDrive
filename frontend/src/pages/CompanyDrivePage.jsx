@@ -42,13 +42,14 @@ export default function CompanyDrivePage() {
     const { renameFolder, deleteFolder, renameFile, deleteFile } = useOrgItemActions(orgId, folderId);
 
     // Fetch org details
-    const { data: orgs = [] } = useQuery({
+    const { data: orgsData } = useQuery({
         queryKey: ['organizations'],
         queryFn: async () => {
             const res = await api.get('/organizations');
-            return res.data.data.organizations;
+            return res.data.data;
         }
     });
+    const orgs = orgsData?.organizations ?? [];
     const currentOrg = orgs.find(o => o.id === orgId);
 
     // Fetch drive contents
@@ -114,22 +115,6 @@ export default function CompanyDrivePage() {
         }
     };
 
-    if (isLoading) {
-        return (
-            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-                <CircularProgress />
-            </Box>
-        );
-    }
-
-    if (isError) {
-        return (
-            <Alert severity="error" sx={{ m: 2 }}>
-                {error?.response?.data?.message || 'Access denied or failed to load Company Drive'}
-            </Alert>
-        );
-    }
-
     const { folders = [], files = [] } = contents || {};
 
     const sortedFolders = React.useMemo(() => {
@@ -166,6 +151,22 @@ export default function CompanyDrivePage() {
             return 0;
         });
     }, [files, sortBy, sortOrder]);
+
+    if (isLoading) {
+        return (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+                <CircularProgress />
+            </Box>
+        );
+    }
+
+    if (isError) {
+        return (
+            <Alert severity="error" sx={{ m: 2 }}>
+                {error?.response?.data?.message || 'Access denied or failed to load Company Drive'}
+            </Alert>
+        );
+    }
 
     return (
         <Box

@@ -23,11 +23,11 @@ export default function ProfileModal({ isOpen, onClose }) {
         queryKey: ['organizations'],
         queryFn: async () => {
             const res = await api.get('/organizations');
-            return res.data.data.organizations;
+            return res.data.data;
         },
         enabled: isOpen,
     });
-    const userOrgs = orgsData || [];
+    const userOrgs = orgsData?.organizations ?? [];
 
     const handleOrgSwitch = (value) => {
         setActiveOrgId(value === 'personal' ? null : value);

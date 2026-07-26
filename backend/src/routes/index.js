@@ -14,6 +14,7 @@ const userRoutes = require('./user.routes');
 const notificationRoutes = require('./notification.routes');
 const organizationRoutes = require('./organization.routes');
 const approvalRoutes = require('./approval.routes');
+const billingRoutes = require('./billing.routes');
 
 const router = express.Router();
 
@@ -38,6 +39,7 @@ router.use('/users', userRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/organizations', organizationRoutes);
 router.use('/approvals', approvalRoutes);
+router.use('/billing', billingRoutes);
 router.use('/', versionRoutes); // Mounts /files/:fileId/versions and /versions/:id
 
 module.exports = router;

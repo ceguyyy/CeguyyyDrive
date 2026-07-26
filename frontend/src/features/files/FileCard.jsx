@@ -3,9 +3,11 @@ import { InsertDriveFile as DocumentIcon, Image as ImageIcon, CheckCircle as App
 import { Card, CardActionArea, CardContent, Typography, Box, Checkbox, Skeleton, Chip, IconButton, Tooltip } from '@mui/material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../services/api';
+import { getDownloadUrlPath } from '../../utils/downloadUrl';
 import ContextMenu from '../../components/ui/ContextMenu';
 import RenameModal from '../../components/modals/RenameModal';
 import FilePreviewModal from '../../components/modals/FilePreviewModal';
+import CopyToDriveModal from '../../components/modals/CopyToDriveModal';
 import ShareModal from '../../components/modals/ShareModal';
 import SubmitForApprovalModal from '../../components/modals/SubmitForApprovalModal';
 import ApprovalMetadataModal from '../../components/approvals/ApprovalMetadataModal';
@@ -35,6 +37,11 @@ export default function FileCard({
     const [isShareOpen, setIsShareOpen] = useState(false);
     const [isApprovalOpen, setIsApprovalOpen] = useState(false);
     const [isApprovalMetaOpen, setIsApprovalMetaOpen] = useState(false);
+    const [isCopyToDriveOpen, setIsCopyToDriveOpen] = useState(false);
+
+    // A file in a Company Drive can only be copied out to My Drive, and a
+    // personal file only copied in.
+    const copyToDriveLabel = file.organization_id ? 'Copy to My Drive' : 'Copy to Company Drive';
     const { renameFile: defaultRename, deleteFile: defaultDelete } = useItemActions(file.folder_id);
     const renameFile = customRenameFile || defaultRename;
     const deleteFile = customDeleteFile || defaultDelete;
@@ -58,7 +65,7 @@ export default function FileCard({
     const { data: thumbnailUrl, isLoading: isThumbnailLoading } = useQuery({
         queryKey: ['thumbnail', file.id],
         queryFn: async () => {
-            const res = await api.get(`/storage/download-url/${file.id}`);
+            const res = await api.get(getDownloadUrlPath(file));
             return res.data.data.downloadUrl;
         },
         enabled: isImage,
@@ -160,15 +167,23 @@ export default function FileCard({
                             onViewApprovalStatus={approvalBadge ? () => setIsApprovalMetaOpen(true) : null}
                             onCopy={() => onCopyItem?.('file', file.id)}
                             onCut={() => onCutItem?.('file', file.id)}
+                            onCopyToDrive={() => setIsCopyToDriveOpen(true)}
+                            copyToDriveLabel={copyToDriveLabel}
                         />
                     </Box>
                 </Card>
 
-                <RenameModal 
+                <RenameModal
                     isOpen={isRenameOpen}
                     currentName={displayName}
                     onClose={() => setIsRenameOpen(false)}
                     onSave={(newName) => renameFile.mutate({ id: file.id, newName })}
+                />
+
+                <CopyToDriveModal
+                    isOpen={isCopyToDriveOpen}
+                    onClose={() => setIsCopyToDriveOpen(false)}
+                    file={file}
                 />
 
                 <FilePreviewModal
@@ -234,34 +249,36 @@ export default function FileCard({
                 />
                 
                 <Tooltip title={file.is_starred ? "Remove from Starred" : "Add to Starred"} placement="top">
-                    <IconButton
-                        className="star-button"
-                        size="small"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            e.preventDefault();
-                            starMutation.mutate();
-                        }}
-                        sx={{
-                            position: 'absolute', top: 8, right: 8, zIndex: 10,
-                            opacity: file.is_starred ? 1 : 0,
-                            transition: 'all 0.2s ease-in-out',
-                            color: file.is_starred ? '#D97706' : '#9CA3AF',
-                            bgcolor: file.is_starred ? 'rgba(254, 243, 199, 0.95)' : 'rgba(255, 255, 255, 0.9)',
-                            border: file.is_starred ? '1px solid rgba(245, 158, 11, 0.4)' : '1px solid rgba(0,0,0,0.08)',
-                            boxShadow: file.is_starred ? '0 2px 8px rgba(245, 158, 11, 0.25)' : '0 2px 6px rgba(0,0,0,0.08)',
-                            backdropFilter: 'blur(4px)',
-                            '&:hover': {
-                                bgcolor: file.is_starred ? '#FEF3C7' : '#FFFFFF',
-                                color: '#F59E0B',
-                                transform: 'scale(1.12)'
-                            },
-                            '&:active': { transform: 'scale(0.95)' },
-                            p: '4px'
-                        }}
-                    >
-                        {file.is_starred ? <StarFilledIcon sx={{ fontSize: 18 }} /> : <StarOutlineIcon sx={{ fontSize: 18 }} />}
-                    </IconButton>
+                    <span>
+                        <IconButton
+                            className="star-button"
+                            size="small"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                starMutation.mutate();
+                            }}
+                            sx={{
+                                position: 'absolute', top: 8, right: 8, zIndex: 10,
+                                opacity: file.is_starred ? 1 : 0,
+                                transition: 'all 0.2s ease-in-out',
+                                color: file.is_starred ? '#D97706' : '#9CA3AF',
+                                bgcolor: file.is_starred ? 'rgba(254, 243, 199, 0.95)' : 'rgba(255, 255, 255, 0.9)',
+                                border: file.is_starred ? '1px solid rgba(245, 158, 11, 0.4)' : '1px solid rgba(0,0,0,0.08)',
+                                boxShadow: file.is_starred ? '0 2px 8px rgba(245, 158, 11, 0.25)' : '0 2px 6px rgba(0,0,0,0.08)',
+                                backdropFilter: 'blur(4px)',
+                                '&:hover': {
+                                    bgcolor: file.is_starred ? '#FEF3C7' : '#FFFFFF',
+                                    color: '#F59E0B',
+                                    transform: 'scale(1.12)'
+                                },
+                                '&:active': { transform: 'scale(0.95)' },
+                                p: '4px'
+                            }}
+                        >
+                            {file.is_starred ? <StarFilledIcon sx={{ fontSize: 18 }} /> : <StarOutlineIcon sx={{ fontSize: 18 }} />}
+                        </IconButton>
+                    </span>
                 </Tooltip>
 
                 <CardActionArea component="div" onClick={handleCardClick} sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -327,15 +344,23 @@ export default function FileCard({
                         onViewApprovalStatus={approvalBadge ? () => setIsApprovalMetaOpen(true) : null}
                         onCopy={() => onCopyItem?.('file', file.id)}
                         onCut={() => onCutItem?.('file', file.id)}
+                        onCopyToDrive={() => setIsCopyToDriveOpen(true)}
+                        copyToDriveLabel={copyToDriveLabel}
                     />
                 </CardContent>
             </Card>
 
-            <RenameModal 
+            <RenameModal
                 isOpen={isRenameOpen}
                 currentName={displayName}
                 onClose={() => setIsRenameOpen(false)}
                 onSave={(newName) => renameFile.mutate({ id: file.id, newName })}
+            />
+
+            <CopyToDriveModal
+                isOpen={isCopyToDriveOpen}
+                onClose={() => setIsCopyToDriveOpen(false)}
+                file={file}
             />
 
             <FilePreviewModal

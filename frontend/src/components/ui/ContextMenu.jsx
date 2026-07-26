@@ -7,6 +7,7 @@ import {
     Share as ShareIcon,
     ContentCopy as CopyIcon,
     ContentCut as CutIcon,
+    DriveFileMove as DriveFileMoveIcon,
     FactCheck as ApprovalStatusIcon,
     Star as StarFilledIcon,
     StarBorder as StarOutlineIcon
@@ -21,6 +22,8 @@ export default function ContextMenu({
     onViewApprovalStatus = null,
     onCopy = null,
     onCut = null,
+    onCopyToDrive = null,
+    copyToDriveLabel = 'Copy to other drive',
     onStar = null,
     isStarred = false
 }) {
@@ -97,6 +100,13 @@ export default function ContextMenu({
                     </MenuItem>
                 )}
                 
+                {onCopyToDrive && (
+                    <MenuItem onClick={(e) => { handleClose(e); onCopyToDrive(); }}>
+                        <ListItemIcon><DriveFileMoveIcon fontSize="small" color="primary" /></ListItemIcon>
+                        <ListItemText>{copyToDriveLabel}</ListItemText>
+                    </MenuItem>
+                )}
+
                 {onShare && (
                     <MenuItem onClick={(e) => { handleClose(e); onShare(); }}>
                         <ListItemIcon><ShareIcon fontSize="small" /></ListItemIcon>

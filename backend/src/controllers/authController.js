@@ -1,15 +1,20 @@
 const { z } = require('zod');
 const authService = require('../services/authService');
 const captchaService = require('../services/captchaService');
-const db = require('../config/db');
+const userRepository = require('../repositories/userRepository');
+const storageQuotaService = require('../services/storageQuotaService');
 
 const registerSchema = z.object({
     email: z.string().email(),
     password: z.string().min(8),
     fullName: z.string().min(2),
-    accessKey: z.string().min(1, "Primary Access key is required"),
-    secondaryAccessKey: z.string().min(1, "Secondary Access key is required"),
-    role: z.enum(['owner', 'user']).optional(),
+    accessKey: z.string().optional().nullable(),
+    secondaryAccessKey: z.string().optional().nullable(),
+    role: z.enum(['owner', 'user', 'super_admin', 'super admin', 'admin']).optional(),
+    roleName: z.enum(['owner', 'user', 'super_admin', 'super admin', 'admin']).optional(),
+    licenseKey: z.string().optional().nullable(),
+    orgName: z.string().optional().nullable(),
+    orgId: z.string().optional().nullable(),
     ticket: z.string().optional(),
     randstr: z.string().optional()
 });
@@ -24,9 +29,9 @@ const loginSchema = z.object({
 exports.register = async (req, res, next) => {
     try {
         const validatedData = registerSchema.parse(req.body);
-        const { email, password, fullName, accessKey, secondaryAccessKey, role } = validatedData;
+        const { email, password, fullName, accessKey, secondaryAccessKey, role, roleName, licenseKey, orgName, orgId } = validatedData;
 
-        const result = await authService.register(email, password, fullName, role || 'user', accessKey, secondaryAccessKey);
+        const result = await authService.register(email, password, fullName, role || roleName || 'user', accessKey, secondaryAccessKey, licenseKey, orgName, orgId);
 
         res.status(201).json({
             status: 'success',
@@ -72,23 +77,33 @@ exports.verifyOtp = async (req, res, next) => {
     }
 };
 
+const resendOtpSchema = z.object({
+    email: z.string().email()
+});
+
+exports.resendOtp = async (req, res, next) => {
+    try {
+        const { email } = resendOtpSchema.parse(req.body);
+        const result = await authService.resendOtp(email);
+
+        res.status(200).json({
+            status: 'success',
+            data: result
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
 exports.getMe = async (req, res, next) => {
     try {
         const userId = req.user.id;
         
-        // Get user details
-        const userResult = await db.query(
-            'SELECT id, email, full_name, role_id, profile_picture FROM users WHERE id = $1',
-            [userId]
-        );
-        const user = userResult.rows[0];
-
-        // Get storage usage (sum of sizes of all active files for this user)
-        const storageResult = await db.query(
-            'SELECT COALESCE(SUM(size), 0) AS total_memory FROM files WHERE user_id = $1 AND is_deleted = false',
-            [userId]
-        );
-        const totalMemory = parseInt(storageResult.rows[0].total_memory, 10) || 0;
+        // Get user details with role_name
+        const user = await userRepository.findById(userId);
+        if (user) {
+            delete user.password_hash;
+        }
 
         let profilePictureUrl = null;
         if (user.profile_picture) {
@@ -96,14 +111,23 @@ exports.getMe = async (req, res, next) => {
             profilePictureUrl = await cosService.getPresignedDownloadUrl(user.profile_picture);
         }
 
+        // Same source as the upload guard in fileService, so the storage bar
+        // and the enforced limit cannot drift apart.
+        const { storageLimit, planName, used: totalMemory } =
+            await storageQuotaService.getUserStorageUsage(userId, user?.role_name);
+
         res.status(200).json({
             status: 'success',
             data: {
                 user: {
                     ...user,
-                    profile_picture_url: profilePictureUrl
+                    profile_picture_url: profilePictureUrl,
+                    storage_limit: storageLimit,
+                    plan_name: planName
                 },
-                total_memory: totalMemory
+                total_memory: totalMemory,
+                storage_limit: storageLimit,
+                plan_name: planName
             }
         });
     } catch (err) {

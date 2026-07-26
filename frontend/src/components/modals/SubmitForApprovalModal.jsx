@@ -16,6 +16,7 @@ export default function SubmitForApprovalModal({ isOpen, onClose, isFile, item }
     const [selectedOrgId, setSelectedOrgId] = useState('');
     const [title, setTitle] = useState('');
     const [steps, setSteps] = useState([{ role_name: 'Manager', approver_id: '' }]);
+    const [revisionPolicy, setRevisionPolicy] = useState('restart');
     const [error, setError] = useState('');
     const queryClient = useQueryClient();
 
@@ -23,11 +24,11 @@ export default function SubmitForApprovalModal({ isOpen, onClose, isFile, item }
         queryKey: ['organizations'],
         queryFn: async () => {
             const res = await api.get('/organizations');
-            const orgs = res.data.data.organizations;
-            if (orgs.length > 0 && !selectedOrgId) {
-                setSelectedOrgId(orgs[0].id);
+            const payload = res.data.data;
+            if (payload.organizations.length > 0 && !selectedOrgId) {
+                setSelectedOrgId(payload.organizations[0].id);
             }
-            return orgs;
+            return payload;
         },
         enabled: isOpen
     });
@@ -62,7 +63,7 @@ export default function SubmitForApprovalModal({ isOpen, onClose, isFile, item }
         enabled: isOpen && !!selectedOrgId
     });
 
-    const orgs = orgsData || [];
+    const orgs = orgsData?.organizations ?? [];
     const roles = rolesData || [];
     const members = membersData || [];
     const templates = templatesData || [];
@@ -74,6 +75,9 @@ export default function SubmitForApprovalModal({ isOpen, onClose, isFile, item }
             role_name: s.role_name,
             approver_id: s.approver_id || ''
         })));
+        if (tpl.revision_policy) {
+            setRevisionPolicy(tpl.revision_policy);
+        }
     };
 
     const submitMutation = useMutation({
@@ -119,7 +123,8 @@ export default function SubmitForApprovalModal({ isOpen, onClose, isFile, item }
             orgId: selectedOrgId,
             ...(isFile ? { fileId: item.id } : { folderId: item.id }),
             title: reqTitle,
-            steps
+            steps,
+            revisionPolicy
         });
     };
 
@@ -171,6 +176,22 @@ export default function SubmitForApprovalModal({ isOpen, onClose, isFile, item }
                             </Select>
                         </FormControl>
                     )}
+
+                    <FormControl fullWidth size="small">
+                        <InputLabel>When an approver requests a revision</InputLabel>
+                        <Select
+                            value={revisionPolicy}
+                            label="When an approver requests a revision"
+                            onChange={(e) => setRevisionPolicy(e.target.value)}
+                        >
+                            <MenuItem value="restart">
+                                Restart from step 1 (Every approver reviews the revised file again from step 1)
+                            </MenuItem>
+                            <MenuItem value="resume">
+                                Resume at the step that requested changes (Review resumes from the step that requested changes)
+                            </MenuItem>
+                        </Select>
+                    </FormControl>
 
                     <Typography variant="subtitle2" fontWeight="bold" sx={{ mt: 1 }}>
                         Configure Multi-Stage Approval Sequence

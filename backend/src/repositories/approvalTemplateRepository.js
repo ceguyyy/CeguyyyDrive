@@ -1,14 +1,15 @@
 const db = require('../config/db');
 
 class ApprovalTemplateRepository {
-    async createTemplate(orgId, name, createdBy, steps) {
+    async createTemplate(orgId, name, createdBy, steps, revisionPolicy = 'restart') {
         const client = await db.getClient();
         try {
             await client.query('BEGIN');
+            const policy = revisionPolicy === 'resume' ? 'resume' : 'restart';
             const templateRes = await client.query(
-                `INSERT INTO approval_templates (organization_id, name, created_by)
-                 VALUES ($1, $2, $3) RETURNING *`,
-                [orgId, name, createdBy]
+                `INSERT INTO approval_templates (organization_id, name, created_by, revision_policy)
+                 VALUES ($1, $2, $3, $4) RETURNING *`,
+                [orgId, name, createdBy, policy]
             );
             const template = templateRes.rows[0];
 
@@ -59,13 +60,18 @@ class ApprovalTemplateRepository {
         return templates;
     }
 
-    async updateTemplate(orgId, templateId, name, steps) {
+    async updateTemplate(orgId, templateId, name, steps, revisionPolicy = null) {
         const client = await db.getClient();
         try {
             await client.query('BEGIN');
+            const policy = revisionPolicy === 'resume' ? 'resume'
+                : revisionPolicy === 'restart' ? 'restart'
+                : null;
             const templateRes = await client.query(
-                `UPDATE approval_templates SET name = $1 WHERE id = $2 AND organization_id = $3 RETURNING *`,
-                [name, templateId, orgId]
+                `UPDATE approval_templates
+                 SET name = $1, revision_policy = COALESCE($4, revision_policy)
+                 WHERE id = $2 AND organization_id = $3 RETURNING *`,
+                [name, templateId, orgId, policy]
             );
             if (templateRes.rows.length === 0) {
                 await client.query('ROLLBACK');

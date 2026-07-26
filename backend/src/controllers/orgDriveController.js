@@ -42,6 +42,28 @@ exports.generateUploadUrl = async (req, res, next) => {
     }
 };
 
+exports.copyFromPersonal = async (req, res, next) => {
+    try {
+        const { orgId } = req.params;
+        const { fileId, destinationFolderId } = req.body;
+        const file = await orgDriveService.copyPersonalFileToOrg(orgId, req.user.id, fileId, destinationFolderId);
+        res.status(201).json({ status: 'success', data: { file } });
+    } catch (err) {
+        next(err);
+    }
+};
+
+exports.copyToPersonal = async (req, res, next) => {
+    try {
+        const { orgId, fileId } = req.params;
+        const { destinationFolderId } = req.body;
+        const file = await orgDriveService.copyOrgFileToPersonal(orgId, req.user.id, fileId, destinationFolderId || null);
+        res.status(201).json({ status: 'success', data: { file } });
+    } catch (err) {
+        next(err);
+    }
+};
+
 exports.generateDownloadUrl = async (req, res, next) => {
     try {
         const { orgId, fileId } = req.params;

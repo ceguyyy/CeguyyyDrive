@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     Box, Typography, Button, TextField, CircularProgress, Alert, Card,
@@ -26,6 +26,85 @@ import { useAuthStore } from '../store/authStore';
 import ConfirmModal from '../components/modals/ConfirmModal';
 import ApprovalTemplateModal from '../components/organization/ApprovalTemplateModal';
 
+function MemberStorageLimitCell({ member, defaultLimitBytes, onSave, isOwnerRow = false }) {
+    const initialVal = member.storage_limit ? (member.storage_limit / (1024 ** 3)).toFixed(1) : '';
+    const [value, setValue] = useState(initialVal);
+    const [isSaving, setIsSaving] = useState(false);
+    const [saved, setSaved] = useState(false);
+
+    const defaultGB = defaultLimitBytes ? Math.round(defaultLimitBytes / (1024 ** 3)) : 10;
+    const placeholder = isOwnerRow ? `${defaultGB} GB (Org Max)` : `${defaultGB} GB (Default)`;
+
+    useEffect(() => {
+        setValue(member.storage_limit ? (member.storage_limit / (1024 ** 3)).toFixed(1) : '');
+    }, [member.storage_limit]);
+
+    const handleSave = async () => {
+        setIsSaving(true);
+        setSaved(false);
+        try {
+            const val = parseFloat(value);
+            const bytes = isNaN(val) || val <= 0 ? null : val * (1024 ** 3);
+            await onSave({ memberId: member.id, limitBytes: bytes });
+            setSaved(true);
+            setTimeout(() => setSaved(false), 2500);
+        } catch (err) {
+            console.error('Failed to update storage limit', err);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    return (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+            <TextField
+                size="small"
+                type="number"
+                placeholder={placeholder}
+                value={value}
+                onChange={(e) => {
+                    setValue(e.target.value);
+                    setSaved(false);
+                }}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleSave();
+                    }
+                }}
+                inputProps={{ min: 0, step: 0.5, style: { width: 65, fontSize: '0.8rem', padding: '4px 8px' } }}
+                variant="outlined"
+            />
+            <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, mr: 0.5 }}>GB</Typography>
+            <Tooltip title="Save storage limit (Done)">
+                <span>
+                    <Button
+                        size="small"
+                        variant="contained"
+                        color={saved ? "success" : "primary"}
+                        onClick={handleSave}
+                        disabled={isSaving}
+                        sx={{
+                            minWidth: 0,
+                            px: 1.25,
+                            py: 0.5,
+                            fontSize: '0.72rem',
+                            fontWeight: 600,
+                            textTransform: 'none',
+                            borderRadius: 1.5,
+                            boxShadow: 'none',
+                            bgcolor: saved ? '#10B981' : '#1A1D20',
+                            '&:hover': { bgcolor: saved ? '#059669' : '#2C3036', boxShadow: 'none' }
+                        }}
+                    >
+                        {isSaving ? <CircularProgress size={12} color="inherit" /> : (saved ? "Done ✓" : "Done")}
+                    </Button>
+                </span>
+            </Tooltip>
+        </Box>
+    );
+}
+
 export default function OrganizationSettings() {
     const user = useAuthStore(state => state.user);
     const activeOrgId = useAuthStore(state => state.activeOrgId);
@@ -39,6 +118,7 @@ export default function OrganizationSettings() {
     const [inviteRole, setInviteRole] = useState('Member');
     const [inviteSuccess, setInviteSuccess] = useState('');
     const [inviteError, setInviteError] = useState('');
+    const [memberActionError, setMemberActionError] = useState('');
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [transferModalOpen, setTransferModalOpen] = useState(false);
     const [transferTargetId, setTransferTargetId] = useState('');
@@ -55,9 +135,9 @@ export default function OrganizationSettings() {
         queryKey: ['organizations'],
         queryFn: async () => {
             const res = await api.get('/organizations');
-            const orgs = res.data.data.organizations;
-            if (orgs.length > 0 && !activeOrgId) setActiveOrgId(orgs[0].id);
-            return orgs;
+            const payload = res.data.data;
+            if (payload.organizations.length > 0 && !activeOrgId) setActiveOrgId(payload.organizations[0].id);
+            return payload;
         }
     });
 
@@ -81,6 +161,18 @@ export default function OrganizationSettings() {
         enabled: !!activeOrgId
     });
 
+    // What this user may do with members, derived server-side from the role
+    // tree. Kept on the server so the UI and the enforcement cannot drift.
+    const { data: permissionsData } = useQuery({
+        queryKey: ['org-permissions', activeOrgId],
+        queryFn: async () => {
+            if (!activeOrgId) return null;
+            const res = await api.get(`/organizations/${activeOrgId}/my-permissions`);
+            return res.data.data.permissions;
+        },
+        enabled: !!activeOrgId
+    });
+
     const { data: templatesData } = useQuery({
         queryKey: ['approval-templates', activeOrgId],
         queryFn: async () => {
@@ -91,12 +183,44 @@ export default function OrganizationSettings() {
         enabled: !!activeOrgId
     });
 
-    const userOrgs = orgsData || [];
+    const userOrgs = orgsData?.organizations ?? [];
+    const ownedOrgCount = orgsData?.ownedCount ?? 0;
+    const maxOwnedOrgs = orgsData?.maxOwnedOrganizations ?? null;
+    const isAtOrgLimit = maxOwnedOrgs !== null && ownedOrgCount >= maxOwnedOrgs;
     const orgMembers = membersData || [];
     const orgRoles = rolesData || [];
-    const orgTemplates = templatesData || [];
+
     const activeOrg = userOrgs.find(o => o.id === activeOrgId) || userOrgs[0];
     const isOwner = activeOrg?.owner_id === user?.id;
+
+    // Determine the current user's role in this org (from members list)
+    const currentUserMember = orgMembers.find(m => m.user_id === user?.id || m.email === user?.email);
+    const currentUserRoleName = currentUserMember?.role_name || activeOrg?.role_name;
+
+    // Roles this user may hand out, and members they may act on. Both come from
+    // the server's reading of the role tree: strictly below your own role, with
+    // the Owner role never assignable (it moves via Transfer Owner only).
+    const permissions = permissionsData ?? {
+        assignableRoles: [],
+        manageableRoleNames: [],
+        canManageAnyRole: false
+    };
+    const invitableRoles = permissions.assignableRoles;
+    const canInvite = invitableRoles.length > 0;
+    const effectiveInviteRole = invitableRoles.includes(inviteRole)
+        ? inviteRole
+        : (invitableRoles[0] || '');
+
+    // The owner's row is untouchable and nobody edits their own role, so those
+    // two cases are excluded before consulting the hierarchy.
+    const canManageMemberRole = (member) => {
+        if (member.user_id && member.user_id === activeOrg?.owner_id) return false;
+        if (currentUserMember && member.id === currentUserMember.id) return false;
+        if (permissions.canManageAnyRole) return true;
+        return permissions.manageableRoleNames.includes(member.role_name);
+    };
+    const orgTemplates = templatesData || [];
+
 
     // ── Mutations ──────────────────────────────────────────────────────────────
     const deleteTemplateMutation = useMutation({
@@ -143,6 +267,20 @@ export default function OrganizationSettings() {
         }
     });
 
+    const changeMemberRoleMutation = useMutation({
+        mutationFn: async ({ memberId, roleName }) => {
+            await api.patch(`/organizations/${activeOrgId}/members/${memberId}/role`, { roleName });
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['org-members', activeOrgId] });
+            setMemberActionError('');
+        },
+        onError: (err) => {
+            setMemberActionError(err.response?.data?.message || 'Failed to change role');
+            setTimeout(() => setMemberActionError(''), 5000);
+        }
+    });
+
     const removeMemberMutation = useMutation({
         mutationFn: async (memberId) => {
             await api.delete(`/organizations/${activeOrgId}/members/${memberId}`);
@@ -181,6 +319,7 @@ export default function OrganizationSettings() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['organizations'] });
             queryClient.invalidateQueries({ queryKey: ['org-members', activeOrgId] });
+            queryClient.invalidateQueries({ queryKey: ['org-permissions', activeOrgId] });
             setTransferModalOpen(false);
             setTransferTargetId('');
         }
@@ -201,7 +340,7 @@ export default function OrganizationSettings() {
         if (!inviteEmail.trim()) return;
         setInviteSuccess('');
         setInviteError('');
-        inviteMemberMutation.mutate({ email: inviteEmail.trim(), roleName: inviteRole });
+        inviteMemberMutation.mutate({ email: inviteEmail.trim(), roleName: effectiveInviteRole });
     };
 
     if (isOrgsLoading) return (
@@ -222,9 +361,26 @@ export default function OrganizationSettings() {
                         Organization Settings
                     </Typography>
                 </Box>
-                <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateModalOpen(true)}>
-                    Create Organization
-                </Button>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    {maxOwnedOrgs !== null && (
+                        <Typography variant="caption" sx={{ fontWeight: 600 }} color={isAtOrgLimit ? 'error.main' : 'text.secondary'}>
+                            {ownedOrgCount} of {maxOwnedOrgs} organizations used
+                        </Typography>
+                    )}
+                    <Tooltip title={!isAtOrgLimit ? '' : maxOwnedOrgs === 0
+                        ? 'Creating an organization requires a license key. Redeem one to get started.'
+                        : `Your plan allows ${maxOwnedOrgs} organization${maxOwnedOrgs === 1 ? '' : 's'}. Delete one to create another.`}>
+                        <span>
+                            <Button
+                                variant="contained" startIcon={<AddIcon />}
+                                disabled={isAtOrgLimit}
+                                onClick={() => setCreateModalOpen(true)}
+                            >
+                                Create Organization
+                            </Button>
+                        </span>
+                    </Tooltip>
+                </Box>
             </Box>
 
             {/* ── Org Selector + Actions ─────────────────────────────────── */}
@@ -334,11 +490,16 @@ export default function OrganizationSettings() {
                     {/* ── TAB 0: Members & Invites ───────────────────────────── */}
                     {tab === 0 && (
                         <Box sx={{ flex: 1, overflowY: 'auto' }}>
-                            {/* Invite Card */}
+                            {/* Invite Card — hidden entirely when the hierarchy
+                                leaves this user no role to hand out. */}
+                            {canInvite && (
                             <Card variant="outlined" sx={{ mb: 3, p: 3, borderRadius: 3 }}>
                                 <Typography variant="h6" fontWeight="bold" gutterBottom>Invite Team Member</Typography>
                                 <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                                     Send an invitation to join <strong>{activeOrg?.name}</strong>.
+                                    {currentUserRoleName && (
+                                        <> You are <Chip label={currentUserRoleName} size="small" variant="outlined" color="primary" sx={{ mx: 0.5, height: 18, fontSize: '0.65rem', verticalAlign: 'middle' }} /> — you can only invite members to roles below your own.</>
+                                    )}
                                 </Typography>
                                 {inviteSuccess && <Alert severity="success" sx={{ mb: 2 }}>{inviteSuccess}</Alert>}
                                 {inviteError && <Alert severity="error" sx={{ mb: 2 }}>{inviteError}</Alert>}
@@ -350,11 +511,8 @@ export default function OrganizationSettings() {
                                     />
                                     <FormControl size="small" sx={{ width: 180 }}>
                                         <InputLabel id="invite-role-label">Role</InputLabel>
-                                        <Select labelId="invite-role-label" value={inviteRole} label="Role" onChange={(e) => setInviteRole(e.target.value)}>
-                                            {orgRoles.length > 0
-                                                ? orgRoles.map(r => <MenuItem key={r.id} value={r.name}>{r.name}</MenuItem>)
-                                                : <MenuItem value="Member">Member</MenuItem>
-                                            }
+                                        <Select labelId="invite-role-label" value={effectiveInviteRole} label="Role" onChange={(e) => setInviteRole(e.target.value)}>
+                                            {invitableRoles.map(name => <MenuItem key={name} value={name}>{name}</MenuItem>)}
                                         </Select>
                                     </FormControl>
                                     <Button type="submit" variant="contained"
@@ -365,11 +523,13 @@ export default function OrganizationSettings() {
                                     </Button>
                                 </Box>
                             </Card>
+                            )}
 
                             {/* Members Table */}
                             <Card variant="outlined" sx={{ borderRadius: 3 }}>
                                 <CardContent>
                                     <Typography variant="h6" fontWeight="bold" gutterBottom>Organization Members</Typography>
+                                    {memberActionError && <Alert severity="error" sx={{ mb: 2 }}>{memberActionError}</Alert>}
                                     {isMembersLoading ? (
                                         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>
                                     ) : (
@@ -399,7 +559,28 @@ export default function OrganizationSettings() {
                                                         </TableCell>
                                                         <TableCell sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>{m.email}</TableCell>
                                                         <TableCell>
-                                                            <Chip label={m.role_name} size="small" color={m.role_name === 'Owner' ? 'error' : 'primary'} variant="outlined" />
+                                                            {canManageMemberRole(m) ? (
+                                                                <FormControl size="small" sx={{ minWidth: 130 }}>
+                                                                    <Select
+                                                                        value={m.role_name}
+                                                                        disabled={changeMemberRoleMutation.isPending}
+                                                                        onChange={(e) => changeMemberRoleMutation.mutate({ memberId: m.id, roleName: e.target.value })}
+                                                                        sx={{ fontSize: '0.8rem' }}
+                                                                    >
+                                                                        {/* The current role can sit outside assignableRoles — an
+                                                                            orphan role seen by the owner — and MUI would render a
+                                                                            blank value without this option. */}
+                                                                        {!permissions.assignableRoles.includes(m.role_name) && (
+                                                                            <MenuItem value={m.role_name} disabled>{m.role_name}</MenuItem>
+                                                                        )}
+                                                                        {permissions.assignableRoles.map(name => (
+                                                                            <MenuItem key={name} value={name}>{name}</MenuItem>
+                                                                        ))}
+                                                                    </Select>
+                                                                </FormControl>
+                                                            ) : (
+                                                                <Chip label={m.role_name} size="small" color={m.role_name === 'Owner' ? 'error' : 'primary'} variant="outlined" />
+                                                            )}
                                                         </TableCell>
                                                         <TableCell>
                                                             <Chip
@@ -412,22 +593,16 @@ export default function OrganizationSettings() {
                                                         {/* Storage Limit (owner only) */}
                                                         {isOwner && (
                                                             <TableCell>
-                                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                                    <TextField
-                                                                        size="small"
-                                                                        type="number"
-                                                                        placeholder="∞"
-                                                                        defaultValue={m.storage_limit ? (m.storage_limit / (1024 ** 3)).toFixed(1) : ''}
-                                                                        inputProps={{ min: 0, step: 1, style: { width: 60, fontSize: '0.75rem' } }}
-                                                                        variant="outlined"
-                                                                        onBlur={(e) => {
-                                                                            const val = parseFloat(e.target.value);
-                                                                            const bytes = isNaN(val) ? null : val * 1024 ** 3;
-                                                                            updateStorageLimitMutation.mutate({ memberId: m.id, limitBytes: bytes });
-                                                                        }}
-                                                                    />
-                                                                    <Typography variant="caption" color="text.secondary">GB</Typography>
-                                                                </Box>
+                                                                <MemberStorageLimitCell
+                                                                    member={m}
+                                                                    isOwnerRow={m.role_name === 'Owner'}
+                                                                    defaultLimitBytes={
+                                                                        m.role_name === 'Owner'
+                                                                            ? (userOrgs.find(o => o.id === activeOrgId)?.storage_limit_bytes || 53687091200)
+                                                                            : (userOrgs.find(o => o.id === activeOrgId)?.member_storage_limit_bytes || 10737418240)
+                                                                    }
+                                                                    onSave={(args) => updateStorageLimitMutation.mutateAsync(args)}
+                                                                />
                                                             </TableCell>
                                                         )}
 
@@ -464,6 +639,11 @@ export default function OrganizationSettings() {
                             orgOwnerId={activeOrg?.owner_id}
                             members={orgMembers}
                             currentUserMembership={orgMembers.find(m => m.user_id === user?.id)}
+                            storageLimitBytes={activeOrg?.storage_limit_bytes ? parseInt(activeOrg.storage_limit_bytes, 10) : null}
+                            onSaved={() => {
+                                queryClient.invalidateQueries({ queryKey: ['org-roles', activeOrgId] });
+                                queryClient.invalidateQueries({ queryKey: ['org-permissions', activeOrgId] });
+                            }}
                         />
                     )}
 

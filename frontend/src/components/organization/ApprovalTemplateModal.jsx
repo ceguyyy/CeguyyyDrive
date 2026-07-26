@@ -12,6 +12,7 @@ export default function ApprovalTemplateModal({ isOpen, onClose, orgId, template
     const queryClient = useQueryClient();
     const [name, setName] = useState('');
     const [steps, setSteps] = useState([{ roleName: '', approverId: '' }]);
+    const [revisionPolicy, setRevisionPolicy] = useState('restart');
     const [error, setError] = useState('');
 
     const acceptedMembers = members.filter(m => m.status === 'accepted');
@@ -19,6 +20,7 @@ export default function ApprovalTemplateModal({ isOpen, onClose, orgId, template
     useEffect(() => {
         if (templateToEdit) {
             setName(templateToEdit.name || '');
+            setRevisionPolicy(templateToEdit.revision_policy || 'restart');
             setSteps(
                 templateToEdit.steps?.length > 0
                     ? templateToEdit.steps.map(s => ({
@@ -29,6 +31,7 @@ export default function ApprovalTemplateModal({ isOpen, onClose, orgId, template
             );
         } else {
             setName('');
+            setRevisionPolicy('restart');
             setSteps([{ roleName: roles[0]?.name || '', approverId: '' }]);
         }
         setError('');
@@ -59,6 +62,7 @@ export default function ApprovalTemplateModal({ isOpen, onClose, orgId, template
 
             const payload = {
                 name: name.trim(),
+                revisionPolicy,
                 steps: validSteps
             };
 
@@ -94,6 +98,22 @@ export default function ApprovalTemplateModal({ isOpen, onClose, orgId, template
                     placeholder="e.g. Standard Purchase Approval"
                     sx={{ mb: 3 }}
                 />
+
+                <TextField
+                    select
+                    label="When an approver requests a revision"
+                    fullWidth
+                    size="small"
+                    value={revisionPolicy}
+                    onChange={(e) => setRevisionPolicy(e.target.value)}
+                    helperText={revisionPolicy === 'resume'
+                        ? 'Earlier approvals stay valid; review resumes at the step that sent it back.'
+                        : 'Every approver reviews the revised file again from step 1.'}
+                    sx={{ mb: 3 }}
+                >
+                    <MenuItem value="restart">Restart from step 1</MenuItem>
+                    <MenuItem value="resume">Resume at the step that requested changes</MenuItem>
+                </TextField>
 
                 <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1.5 }}>
                     Approval Steps (Executed in sequence)

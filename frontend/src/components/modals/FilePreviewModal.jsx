@@ -5,6 +5,7 @@ import {
 } from '@mui/material';
 import { Close as CloseIcon, Download as DownloadIcon, OpenInNew as OpenInNewIcon } from '@mui/icons-material';
 import api from '../../services/api';
+import { getDownloadUrlPath } from '../../utils/downloadUrl';
 import PromptModal from './PromptModal';
 import { FilePreviewEmbed } from '@eternalheart/react-file-preview';
 import '@eternalheart/react-file-preview/style.css';
@@ -24,8 +25,7 @@ export default function FilePreviewModal({ isOpen, onClose, file }) {
             setIsLoading(true);
             setError(null);
             
-            const targetId = file.id || file.file_id;
-            api.get(`/storage/download-url/${targetId}`)
+            api.get(getDownloadUrlPath(file))
                 .then(async res => {
                     if (!isMounted) return;
                     const url = res.data.data.downloadUrl;

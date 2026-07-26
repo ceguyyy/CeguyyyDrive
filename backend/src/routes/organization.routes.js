@@ -17,9 +17,12 @@ router.post('/:orgId/invite', organizationController.inviteMember);
 router.post('/:orgId/respond', organizationController.respondToInvitation);
 router.get('/:orgId/members', organizationController.getMembers);
 router.get('/:orgId/roles', organizationController.getRoles);
+router.get('/:orgId/my-permissions', organizationController.getMyPermissions);
 router.post('/:orgId/roles', organizationController.saveRoles);
 router.delete('/:orgId', organizationController.deleteOrganization);
 router.delete('/:orgId/members/:memberId', organizationController.removeMember);
+router.patch('/:orgId/members/:memberId/storage', organizationController.updateMemberStorageLimit);
+router.patch('/:orgId/members/:memberId/role', organizationController.changeMemberRole);
 router.post('/:orgId/transfer-owner', organizationController.transferOwner);
 
 module.exports = router;

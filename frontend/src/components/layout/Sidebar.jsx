@@ -1,9 +1,10 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/authStore';
 import CreateFolderModal from '../modals/CreateFolderModal';
 import ProfileModal from '../modals/ProfileModal';
+import RequestApprovalUploadModal from '../modals/RequestApprovalUploadModal';
 import { useUpload } from '../../hooks/useUpload';
 import { useItemActions } from '../../hooks/useItemActions';
 import api from '../../services/api';
@@ -28,22 +29,25 @@ import {
     Business as OrgIcon,
     Star as StarIcon,
     Apartment as CompanyDriveIcon,
+    AdminPanelSettings as BillingIcon,
     ExpandLess, ExpandMore
 } from '@mui/icons-material';
 
 import CloudLogo from '../ui/CloudLogo';
+import { isSuperAdmin } from '../../utils/roles';
 
 const EXPANDED_WIDTH = 260;
 const COLLAPSED_WIDTH = 72;
 
 export default function Sidebar() {
-    const { logout, user, totalMemory, profileModalOpen, openProfileModal, closeProfileModal } = useAuthStore();
+    const { logout, user, totalMemory, storageLimit, activeOrgId, profileModalOpen, openProfileModal, closeProfileModal } = useAuthStore();
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
     const [isCompanyDriveOpen, setIsCompanyDriveOpen] = useState(true);
 
     const [anchorEl, setAnchorEl] = useState(null);
     const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
+    const [isRequestApprovalModalOpen, setIsRequestApprovalModalOpen] = useState(false);
     const [isMyDriveDragOver, setIsMyDriveDragOver] = useState(false);
     
     const fileInputRef = useRef(null);
@@ -54,13 +58,14 @@ export default function Sidebar() {
     const uploadMutation = useUpload(currentFolderId);
     const { moveFile, moveFolder } = useItemActions(currentFolderId);
 
-    const { data: orgs = [] } = useQuery({
+    const { data: orgsData } = useQuery({
         queryKey: ['organizations'],
         queryFn: async () => {
             const res = await api.get('/organizations');
-            return res.data.data.organizations;
+            return res.data.data;
         }
     });
+    const orgs = orgsData?.organizations ?? [];
 
     const handleMenuOpen = (event) => setAnchorEl(event.currentTarget);
     const handleMenuClose = () => setAnchorEl(null);
@@ -74,8 +79,26 @@ export default function Sidebar() {
         e.target.value = null; // Reset input
     };
 
-    const TOTAL_STORAGE_LIMIT = 15 * 1024 * 1024 * 1024; // 15 GB
-    const storagePercentage = Math.min((totalMemory / TOTAL_STORAGE_LIMIT) * 100, 100);
+    // When activeOrgId is null it means "Personal Drive" — no fallback to first org
+    const currentOrg = activeOrgId ? (orgs.find(o => o.id === activeOrgId) || null) : null;
+
+    useEffect(() => {
+        if (currentOrg && currentOrg.custom_app_title && currentOrg.custom_app_title.trim() !== '') {
+            document.title = `${currentOrg.custom_app_title.trim()} - Cloud Storage`;
+        } else {
+            document.title = 'CeguyyyDrive - Enterprise Cloud Storage';
+        }
+    }, [currentOrg]);
+
+    let TOTAL_STORAGE_LIMIT = storageLimit || 5 * 1024 * 1024 * 1024; // 5 GB default Free
+    if (currentOrg) {
+        if (currentOrg.role_name === 'Owner' || currentOrg.owner_id === user?.id || user?.role_name === 'owner') {
+            TOTAL_STORAGE_LIMIT = parseInt(currentOrg.storage_limit_bytes || 5368709120, 10);
+        } else {
+            TOTAL_STORAGE_LIMIT = parseInt(currentOrg.member_storage_limit_bytes || 5368709120, 10);
+        }
+    }
+    const storagePercentage = Math.min((totalMemory / TOTAL_STORAGE_LIMIT) * 100, 100) || 0;
 
     const formatBytes = (bytes) => {
         if (!bytes) return '0 B';
@@ -118,10 +141,14 @@ export default function Sidebar() {
                 {/* Header Logo & Collapse Toggle */}
                 <Box sx={{ p: 2, pb: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
-                        <CloudLogo size={34} sx={{ mr: showFull ? 1.5 : 0 }} />
+                        {currentOrg && currentOrg.custom_logo_url && currentOrg.custom_logo_url.trim() !== '' ? (
+                            <Avatar src={currentOrg.custom_logo_url.trim()} sx={{ width: 34, height: 34, mr: showFull ? 1.5 : 0, bgcolor: 'transparent', '& img': { objectFit: 'contain' } }} />
+                        ) : (
+                            <CloudLogo size={34} sx={{ mr: showFull ? 1.5 : 0 }} />
+                        )}
                         {showFull && (
                             <Typography variant="subtitle1" fontWeight="700" noWrap>
-                                CeguyyyDrive
+                                {currentOrg && currentOrg.custom_app_title && currentOrg.custom_app_title.trim() !== '' ? currentOrg.custom_app_title.trim() : 'CeguyyyDrive'}
                             </Typography>
                         )}
                     </Box>
@@ -207,6 +234,11 @@ export default function Sidebar() {
                         }}>
                             <ListItemIcon><FolderIcon fontSize="small" /></ListItemIcon>
                             <ListItemText>Folder Upload</ListItemText>
+                        </MenuItem>
+                        <Divider sx={{ my: 0.5 }} />
+                        <MenuItem onClick={() => { setIsRequestApprovalModalOpen(true); handleMenuClose(); }}>
+                            <ListItemIcon><ApprovalIcon fontSize="small" sx={{ color: 'primary.main' }} /></ListItemIcon>
+                            <ListItemText sx={{ fontWeight: 600, color: 'primary.main' }}>Request To Approve</ListItemText>
                         </MenuItem>
                     </Menu>
                     <input 
@@ -399,6 +431,24 @@ export default function Sidebar() {
                             {showFull && <ListItemText primary="Chat" />}
                         </ListItemButton>
                     </ListItem>
+
+                    {/* Super Admin Billing Console */}
+                    {isSuperAdmin(user) && (
+                        <ListItem disablePadding sx={{ mb: 0.5, display: 'block' }}>
+                            <ListItemButton 
+                                component={NavLink} 
+                                to="/billing"
+                                sx={{ 
+                                    py: 0.75, px: showFull ? 1.5 : 0, justifyContent: showFull ? 'flex-start' : 'center', borderRadius: 1,
+                                    '&.active': { backgroundColor: 'action.selected' },
+                                    '& .MuiListItemIcon-root': { minWidth: showFull ? 32 : 'auto', justifyContent: 'center', color: 'text.secondary' }
+                                }}
+                            >
+                                <ListItemIcon><BillingIcon /></ListItemIcon>
+                                {showFull && <ListItemText primary="Billing Console" />}
+                            </ListItemButton>
+                        </ListItem>
+                    )}
                 </List>
 
                 {/* Storage & Profile Section */}
@@ -415,11 +465,11 @@ export default function Sidebar() {
                                 sx={{ height: 6, borderRadius: 3, mb: 0.5 }}
                             />
                             <Typography variant="caption" color="text.secondary">
-                                {formatBytes(totalMemory)} of 15 GB used
+                                {formatBytes(totalMemory)} of {formatBytes(TOTAL_STORAGE_LIMIT)} used
                             </Typography>
                         </Box>
                     ) : (
-                        <Tooltip title={`Storage: ${formatBytes(totalMemory)} of 15 GB used`} placement="right">
+                        <Tooltip title={`Storage: ${formatBytes(totalMemory)} of ${formatBytes(TOTAL_STORAGE_LIMIT)} used`} placement="right">
                             <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
                                 <CloudIcon sx={{ color: 'text.secondary' }} />
                             </Box>
@@ -439,18 +489,21 @@ export default function Sidebar() {
                         >
                             <Avatar 
                                 src={user?.profile_picture_url} 
-                                sx={{ width: 32, height: 32, mr: 1.5, fontSize: '0.875rem' }}
+                                sx={{ width: 32, height: 32, mr: 1.5, fontSize: '0.875rem', flexShrink: 0 }}
                             >
                                 {user?.full_name?.charAt(0)?.toUpperCase()}
                             </Avatar>
-                            <Box sx={{ overflow: 'hidden' }}>
+                            <Box sx={{ overflow: 'hidden', minWidth: 0 }}>
                                 <Typography variant="body2" fontWeight={600} noWrap>
                                     {user?.full_name || 'User'}
+                                </Typography>
+                                <Typography variant="caption" noWrap sx={{ color: 'text.secondary', display: 'block', lineHeight: 1.3 }}>
+                                    {currentOrg ? `${currentOrg.name} · ${currentOrg.role_name || 'Member'}` : 'Personal Drive'}
                                 </Typography>
                             </Box>
                         </Box>
                     ) : (
-                        <Tooltip title={user?.full_name || 'Profile'} placement="right">
+                        <Tooltip title={`${user?.full_name || 'Profile'} · ${currentOrg ? `${currentOrg.name} (${currentOrg.role_name || 'Member'})` : 'Personal Drive'}`} placement="right">
                             <Box 
                                 sx={{ display: 'flex', justifyContent: 'center', mb: 2, cursor: 'pointer' }}
                                 onClick={openProfileModal}
@@ -505,6 +558,12 @@ export default function Sidebar() {
             <ProfileModal
                 isOpen={profileModalOpen}
                 onClose={closeProfileModal}
+            />
+
+            <RequestApprovalUploadModal
+                isOpen={isRequestApprovalModalOpen}
+                onClose={() => setIsRequestApprovalModalOpen(false)}
+                folderId={currentFolderId}
             />
         </Box>
     );

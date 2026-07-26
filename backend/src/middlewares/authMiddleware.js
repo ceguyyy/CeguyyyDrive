@@ -24,6 +24,12 @@ exports.protect = async (req, res, next) => {
             return next(new AppError('The user belonging to this token no longer exists.', 401));
         }
 
+        // Checked on every request, not just at login: without this a suspended
+        // user keeps working until their existing JWT happens to expire.
+        if (currentUser.status === 'suspended') {
+            return next(new AppError('Your account has been suspended. Contact your administrator.', 403));
+        }
+
         // Grant access to protected route
         req.user = currentUser;
         next();

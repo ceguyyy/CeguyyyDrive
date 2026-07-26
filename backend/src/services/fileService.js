@@ -3,6 +3,7 @@ const folderRepository = require('../repositories/folderRepository'); // Need to
 const favoriteRepository = require('../repositories/favoriteRepository');
 const path = require('path');
 const cosService = require('./cosService');
+const storageQuotaService = require('./storageQuotaService');
 const AppError = require('../utils/AppError');
 
 class FileService {
@@ -13,6 +14,19 @@ class FileService {
             if (!folder) {
                 throw new AppError('Folder not found', 404);
             }
+        }
+
+        // Enforce the personal storage quota. Company Drive has its own checks
+        // in orgDriveService; My Drive previously had none at all.
+        const incomingSize = parseInt(size, 10) || 0;
+        const { storageLimit, used } = await storageQuotaService.getUserStorageUsage(userId);
+        if (storageLimit > 0 && (used + incomingSize) > storageLimit) {
+            const limitGB = (storageLimit / (1024 ** 3)).toFixed(2);
+            const usedGB = (used / (1024 ** 3)).toFixed(2);
+            throw new AppError(
+                `Upload failed: storage quota exceeded. Using ${usedGB} GB of ${limitGB} GB.`,
+                403
+            );
         }
 
         // Validate uniqueness and generate new name if duplicate

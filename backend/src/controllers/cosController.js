@@ -105,3 +105,28 @@ exports.generateProfilePictureUploadUrl = async (req, res, next) => {
         next(err);
     }
 };
+
+exports.generateBrandingLogoUploadUrl = async (req, res, next) => {
+    try {
+        const { fileName } = req.body;
+        if (!fileName) {
+            return res.status(400).json({ status: 'fail', message: 'fileName is required' });
+        }
+        
+        const safeName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
+        const storageKey = `branding_logos/${req.user.id}_${Date.now()}_${safeName}`;
+        const uploadUrl = await cosService.getPresignedUploadUrl(storageKey);
+        const downloadUrl = await cosService.getPresignedDownloadUrl(storageKey);
+
+        res.status(200).json({
+            status: 'success',
+            data: {
+                uploadUrl,
+                storageKey,
+                downloadUrl
+            }
+        });
+    } catch (err) {
+        next(err);
+    }
+};

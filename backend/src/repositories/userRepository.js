@@ -23,7 +23,7 @@ class UserRepository {
     
     async findById(id) {
         const result = await db.query(
-            `SELECT u.id, u.email, u.full_name, u.role_id, r.name as role_name 
+            `SELECT u.*, r.name as role_name 
              FROM users u 
              LEFT JOIN roles r ON u.role_id = r.id 
              WHERE u.id = $1`,

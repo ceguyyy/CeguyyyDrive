@@ -1,5 +1,6 @@
 const COS = require('cos-nodejs-sdk-v5');
 const crypto = require('crypto');
+const axios = require('axios');
 const AppError = require('../utils/AppError');
 
 class CosService {
@@ -72,6 +73,20 @@ class CosService {
         });
     }
 
+    async resolvePublicUrl(urlOrKey) {
+        if (!urlOrKey) return null;
+        if (typeof urlOrKey !== 'string') return urlOrKey;
+        if (urlOrKey.startsWith('http://') || urlOrKey.startsWith('https://') || urlOrKey.startsWith('data:')) {
+            return urlOrKey;
+        }
+        try {
+            return await this.getPresignedDownloadUrl(urlOrKey);
+        } catch (err) {
+            console.error('Failed to resolve public URL for key:', urlOrKey, err);
+            return urlOrKey;
+        }
+    }
+
     deleteObject(objectKey) {
         return new Promise((resolve, reject) => {
             this.cos.deleteObject({
@@ -102,6 +117,38 @@ class CosService {
                 if (err) {
                     console.error('COS Copy Object Error:', err);
                     return reject(new AppError('Failed to copy file in storage', 500));
+                }
+                resolve(data);
+            });
+        });
+    }
+
+    async getObjectBuffer(objectKey) {
+        try {
+            const url = await this.getPresignedDownloadUrl(objectKey);
+            const res = await axios.get(url, { responseType: 'arraybuffer' });
+            return Buffer.from(res.data);
+        } catch (err) {
+            console.error('COS Get Object Buffer Error:', err);
+            throw new AppError('Failed to download file from storage', 500);
+        }
+    }
+
+    putObjectBuffer(objectKey, buffer, mimeType = null) {
+        return new Promise((resolve, reject) => {
+            const params = {
+                Bucket: this.bucket,
+                Region: this.region,
+                Key: objectKey,
+                Body: buffer
+            };
+            if (mimeType) {
+                params.ContentType = mimeType;
+            }
+            this.cos.putObject(params, (err, data) => {
+                if (err) {
+                    console.error('COS Put Object Buffer Error:', err);
+                    return reject(new AppError('Failed to upload file to storage', 500));
                 }
                 resolve(data);
             });

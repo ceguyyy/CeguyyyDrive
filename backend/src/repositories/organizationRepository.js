@@ -1,13 +1,36 @@
 const db = require('../config/db');
+const subscriptionTierRepository = require('./subscriptionTierRepository');
+const { maxOrganizationsForPlan, MAX_ORGANIZATIONS_WITHOUT_PLAN } = require('../config/planLimits');
 
 class OrganizationRepository {
-    async createOrganization(name, ownerId) {
+    async createOrganization(name, ownerId, billingConfig = {}) {
+        const {
+            licenseKey = null,
+            planName = 'Free',
+            storageLimitBytes = 5368709120, // 5 GB default
+            maxMembers = 5,
+            memberStorageLimitBytes = 5368709120, // 5 GB default per member
+            featureApprovalEnabled = true,
+            featureChatEnabled = true,
+            maxOrganizations = null,
+            gmtLocation = 'GMT+7 (Asia/Jakarta)'
+        } = billingConfig;
+
+        // The editable tier wins; config/planLimits is the fallback for 'Custom',
+        // a deleted tier, or a database that has not run migration 018.
+        const tier = await subscriptionTierRepository.findByName(planName);
+        const resolvedMaxOrganizations =
+            maxOrganizations ?? tier?.max_organizations ?? maxOrganizationsForPlan(planName);
+
         const client = await db.getClient();
         try {
             await client.query('BEGIN');
             const orgRes = await client.query(
-                `INSERT INTO organizations (name, owner_id) VALUES ($1, $2) RETURNING *`,
-                [name, ownerId]
+                `INSERT INTO organizations (
+                    name, owner_id, license_key, plan_name, storage_limit_bytes, max_members, member_storage_limit_bytes,
+                    feature_approval_enabled, feature_chat_enabled, max_organizations, gmt_location, status
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'active') RETURNING *`,
+                [name, ownerId, licenseKey, planName, storageLimitBytes, maxMembers, memberStorageLimitBytes, featureApprovalEnabled, featureChatEnabled, resolvedMaxOrganizations, gmtLocation]
             );
             const org = orgRes.rows[0];
 
@@ -18,11 +41,11 @@ class OrganizationRepository {
                 [org.id, ownerId]
             );
 
-            // Add default roles (Owner, Manager, Staff)
+            // Add default roles (Owner, Manager, Staff) with Owner receiving total storage quota
             const ceoRes = await client.query(
-                `INSERT INTO organization_roles (organization_id, name, parent_role_id, canvas_position_x, canvas_position_y, color) 
-                 VALUES ($1, 'Owner', NULL, 300, 50, '#EF4444') RETURNING id`,
-                [org.id]
+                `INSERT INTO organization_roles (organization_id, name, parent_role_id, canvas_position_x, canvas_position_y, color, storage_limit) 
+                 VALUES ($1, 'Owner', NULL, 300, 50, '#EF4444', $2) RETURNING id`,
+                [org.id, storageLimitBytes]
             );
             const ceoId = ceoRes.rows[0].id;
 
@@ -83,6 +106,17 @@ class OrganizationRepository {
         return result.rows[0].count;
     }
 
+    // The owner's entitlement is the most generous plan among the organizations
+    // they already own. Owning none means no plan, so no entitlement.
+    async findMaxOrganizationsForOwner(ownerId) {
+        const result = await db.query(
+            `SELECT COALESCE(MAX(max_organizations), $2)::int AS max_organizations
+             FROM organizations WHERE owner_id = $1`,
+            [ownerId, MAX_ORGANIZATIONS_WITHOUT_PLAN]
+        );
+        return result.rows[0].max_organizations;
+    }
+
     async addMember(orgId, email, roleName = 'Member', targetUserId = null) {
         const result = await db.query(
             `INSERT INTO organization_members (organization_id, email, user_id, role_name, status)
@@ -106,6 +140,49 @@ class OrganizationRepository {
         return result.rows;
     }
 
+    // Matches on email as well as user_id: organization_members.user_id stays
+    // null for invitees who had no account when they were invited, and the rest
+    // of this repository resolves membership the same way.
+    async findMemberByUserId(orgId, userId) {
+        const result = await db.query(
+            `SELECT * FROM organization_members
+             WHERE organization_id = $1
+               AND (user_id = $2 OR LOWER(email) = (SELECT LOWER(email) FROM users WHERE id = $2))`,
+            [orgId, userId]
+        );
+        return result.rows[0];
+    }
+
+    // Invitations are addressed to an email before the invitee has an account,
+    // so the registration path can only match on email.
+    async findMemberByEmail(orgId, email) {
+        const result = await db.query(
+            `SELECT * FROM organization_members
+             WHERE organization_id = $1 AND LOWER(email) = LOWER($2)`,
+            [orgId, String(email || '').trim()]
+        );
+        return result.rows[0];
+    }
+
+    async findMemberById(orgId, memberId) {
+        const result = await db.query(
+            `SELECT * FROM organization_members WHERE id = $1 AND organization_id = $2`,
+            [memberId, orgId]
+        );
+        return result.rows[0];
+    }
+
+    async updateMemberRole(orgId, memberId, roleName) {
+        const result = await db.query(
+            `UPDATE organization_members
+             SET role_name = $3
+             WHERE id = $1 AND organization_id = $2
+             RETURNING *`,
+            [memberId, orgId, roleName]
+        );
+        return result.rows[0];
+    }
+
     async updateMemberStatus(orgId, userId, status) {
         const result = await db.query(
             `UPDATE organization_members 
@@ -121,6 +198,17 @@ class OrganizationRepository {
         const result = await db.query(
             `DELETE FROM organization_members WHERE id = $1 AND organization_id = $2 AND role_name != 'Owner' RETURNING *`,
             [memberId, orgId]
+        );
+        return result.rows[0];
+    }
+
+    async updateMemberStorageLimit(orgId, memberId, limitBytes) {
+        const result = await db.query(
+            `UPDATE organization_members 
+             SET storage_limit = $3
+             WHERE id = $1 AND organization_id = $2
+             RETURNING *`,
+            [memberId, orgId, limitBytes]
         );
         return result.rows[0];
     }

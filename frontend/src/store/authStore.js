@@ -5,6 +5,8 @@ export const useAuthStore = create((set) => ({
     token: localStorage.getItem('token') || null,
     user: null,
     totalMemory: 0,
+    storageLimit: 5368709120, // 5 GB default
+    planName: 'Free',
     activeOrgId: localStorage.getItem('activeOrgId') || null,
     profileModalOpen: false,
     openProfileModal: () => set({ profileModalOpen: true }),
@@ -24,7 +26,7 @@ export const useAuthStore = create((set) => ({
     logout: () => {
         localStorage.removeItem('token');
         localStorage.removeItem('activeOrgId');
-        set({ token: null, user: null, totalMemory: 0, activeOrgId: null });
+        set({ token: null, user: null, totalMemory: 0, storageLimit: 5368709120, planName: 'Free', activeOrgId: null });
     },
     fetchMe: async () => {
         try {
@@ -32,7 +34,9 @@ export const useAuthStore = create((set) => ({
             if (res.data.status === 'success') {
                 set({ 
                     user: res.data.data.user,
-                    totalMemory: res.data.data.total_memory
+                    totalMemory: res.data.data.total_memory,
+                    storageLimit: res.data.data.storage_limit || 5368709120,
+                    planName: res.data.data.plan_name || 'Free'
                 });
             }
         } catch (err) {
@@ -40,7 +44,7 @@ export const useAuthStore = create((set) => ({
             // If unauthorized, token is probably invalid, maybe logout?
             if (err.response?.status === 401) {
                 localStorage.removeItem('token');
-                set({ token: null, user: null, totalMemory: 0 });
+                set({ token: null, user: null, totalMemory: 0, storageLimit: 5368709120, planName: 'Free' });
             }
         }
     }

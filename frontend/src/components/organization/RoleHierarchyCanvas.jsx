@@ -14,7 +14,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import {
-    Box, Button, Typography, Paper, TextField, IconButton, Chip, Stack, Alert, Tooltip
+    Box, Button, Typography, Paper, TextField, IconButton, Chip, Stack, Alert, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions
 } from '@mui/material';
 import {
     Add as AddIcon,
@@ -22,6 +22,7 @@ import {
     Delete as DeleteIcon,
     AccountTree as TreeIcon,
     CheckCircle as ConnectedIcon,
+    Edit as EditIcon,
 } from '@mui/icons-material';
 import api from '../../services/api';
 import { useAuthStore } from '../../store/authStore';
@@ -73,18 +74,40 @@ function RoleNode({ id, data, isConnectable }) {
                     <Typography variant="subtitle2" fontWeight={700} noWrap sx={{ color: '#1E293B', fontSize: '0.85rem' }}>
                         {isOwnerNode && '👑 '}{data.name}
                     </Typography>
-                    {canEdit && !isOwnerNode && (
-                        <Tooltip title="Delete role">
-                            <IconButton
-                                size="small"
-                                onClick={() => data.onDelete(id)}
-                                className="nodrag nopan"
-                                sx={{ p: 0.3, color: '#EF4444', '&:hover': { bgcolor: '#FEE2E2' } }}
-                            >
-                                <DeleteIcon sx={{ fontSize: 14 }} />
-                            </IconButton>
-                        </Tooltip>
+                    {canEdit && (
+                        <Stack direction="row" spacing={0.5} className="nodrag nopan">
+                            <Tooltip title="Edit Role Quota">
+                                <IconButton
+                                    size="small"
+                                    onClick={() => data.onEdit && data.onEdit(id)}
+                                    sx={{ p: 0.3, color: '#3B82F6', '&:hover': { bgcolor: '#DBEAFE' } }}
+                                >
+                                    <EditIcon sx={{ fontSize: 14 }} />
+                                </IconButton>
+                            </Tooltip>
+                            {!isOwnerNode && (
+                                <Tooltip title="Delete role">
+                                    <IconButton
+                                        size="small"
+                                        onClick={() => data.onDelete(id)}
+                                        sx={{ p: 0.3, color: '#EF4444', '&:hover': { bgcolor: '#FEE2E2' } }}
+                                    >
+                                        <DeleteIcon sx={{ fontSize: 14 }} />
+                                    </IconButton>
+                                </Tooltip>
+                            )}
+                        </Stack>
                     )}
+                </Box>
+
+                {/* Role Quota Pill */}
+                <Box sx={{ mb: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', bgcolor: '#F1F5F9', px: 1, py: 0.3, borderRadius: '6px', border: '1px solid #E2E8F0' }}>
+                    <Typography variant="caption" sx={{ color: '#475569', fontWeight: 600, fontSize: '0.65rem' }}>
+                        Max Quota:
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: data.storage_limit ? '#1D4ED8' : '#64748B', fontWeight: 700, fontSize: '0.7rem' }}>
+                        {data.storage_limit ? `${data.storage_limit} GB` : 'Org Default'}
+                    </Typography>
                 </Box>
 
                 {/* Superior */}
@@ -156,12 +179,36 @@ function RoleNode({ id, data, isConnectable }) {
 const nodeTypes = { roleNode: RoleNode };
 
 // ─── Main Canvas ──────────────────────────────────────────────────────────────
-function HierarchyCanvasInner({ orgId, isOwner, currentUserRoleName }) {
+function HierarchyCanvasInner({ orgId, isOwner, currentUserRoleName, storageLimitBytes, onSaved }) {
     const [nodes, setNodes] = useState([]);
     const [edges, setEdges] = useState([]);
     const [newRoleName, setNewRoleName] = useState('');
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState('');
+    const [editingNodeId, setEditingNodeId] = useState(null);
+    const [editRoleQuota, setEditRoleQuota] = useState('');
+
+    const handleEditNode = useCallback((id) => {
+        setNodes(nds => {
+            const node = nds.find(n => String(n.id) === String(id));
+            if (node) {
+                setEditingNodeId(id);
+                setEditRoleQuota(node.data.storage_limit ? String(node.data.storage_limit) : '');
+            }
+            return nds;
+        });
+    }, []);
+
+    const handleSaveRoleQuota = () => {
+        setNodes(nds => nds.map(n => String(n.id) === String(editingNodeId) ? {
+            ...n,
+            data: {
+                ...n.data,
+                storage_limit: editRoleQuota !== '' && !isNaN(editRoleQuota) ? parseFloat(editRoleQuota) : null
+            }
+        } : n));
+        setEditingNodeId(null);
+    };
 
     // Compute depth of each role ID from parent->child edges
     const computeDepths = (roles, edgesArr) => {
@@ -195,13 +242,26 @@ function HierarchyCanvasInner({ orgId, isOwner, currentUserRoleName }) {
 
         const depths = computeDepths(roles, edgesArr);
 
-        // Find the current user's depth by matching role name
-        let userDepth = -1; // -1 = unknown, treat as owner
+        // The ids strictly below the current user's own role — the exact set the
+        // server lets them reshape in saveRoles. Depth alone would be wrong here:
+        // two Managers sit at the same depth, and neither owns the other's staff.
+        const editableIds = new Set();
         if (!isOwner && currentUserRoleName) {
-            const matchRole = roles.find(r =>
+            const myRole = roles.find(r =>
                 r.name.toLowerCase() === currentUserRoleName.toLowerCase()
             );
-            if (matchRole) userDepth = depths[String(matchRole.id)] ?? 0;
+            if (myRole) {
+                const queue = [String(myRole.id)];
+                const visited = new Set(queue);
+                while (queue.length > 0) {
+                    for (const childId of childrenMap[queue.shift()] || []) {
+                        if (visited.has(childId)) continue;
+                        visited.add(childId);
+                        editableIds.add(childId);
+                        queue.push(childId);
+                    }
+                }
+            }
         }
 
         return roles.map(r => {
@@ -212,8 +272,9 @@ function HierarchyCanvasInner({ orgId, isOwner, currentUserRoleName }) {
             const subordinateNames = (childrenMap[rid] || []).map(cid => roleNameMap[cid] || cid);
             const nodeDepth = depths[rid] ?? 0;
 
-            // canEdit: owner can edit all; non-owner can ONLY edit nodes strictly below their depth
-            const canEdit = isOwner ? true : (userDepth >= 0 && nodeDepth > userDepth);
+            // Mirrors the server rule in saveRoles: you own exactly the subtree
+            // strictly below your own role, never your own node and never upward.
+            const canEdit = isOwner || editableIds.has(rid);
 
             return {
                 id: rid,
@@ -227,11 +288,13 @@ function HierarchyCanvasInner({ orgId, isOwner, currentUserRoleName }) {
                     subordinateNames,
                     nodeDepth,
                     canEdit,
+                    storage_limit: r.storage_limit ? Math.round(parseInt(r.storage_limit, 10) / (1024 * 1024 * 1024)) : null,
                     onDelete: (id) => handleDeleteNode(id),
+                    onEdit: (id) => handleEditNode(id),
                 }
             };
         });
-    }, [isOwner, currentUserRoleName]);
+    }, [isOwner, currentUserRoleName, handleEditNode]);
 
     const loadRoles = useCallback(async () => {
         if (!orgId) return;
@@ -385,7 +448,9 @@ function HierarchyCanvasInner({ orgId, isOwner, currentUserRoleName }) {
                 subordinateNames: [],
                 nodeDepth: myNode ? (myNode.data.nodeDepth ?? 0) + 1 : 999,
                 canEdit: true,
+                storage_limit: null,
                 onDelete: (nid) => handleDeleteNode(nid),
+                onEdit: (nid) => handleEditNode(nid),
             }
         };
 
@@ -446,15 +511,18 @@ function HierarchyCanvasInner({ orgId, isOwner, currentUserRoleName }) {
                     canvas_position_x: Math.round(n.position.x),
                     canvas_position_y: Math.round(n.position.y),
                     color: n.data.color,
-                    storage_limit: null,
+                    storage_limit: n.data.storage_limit ? Math.round(parseFloat(n.data.storage_limit) * 1024 * 1024 * 1024) : null,
                 };
             });
             await api.post(`/organizations/${orgId}/roles`, { roles: formattedRoles });
             setMessage('Hierarchy saved!');
             setTimeout(() => setMessage(''), 3000);
             loadRoles();
-        } catch {
-            setMessage('Failed to save.');
+            // Renaming or reparenting a role changes who may assign what, so the
+            // Members tab's cached permissions are now stale.
+            onSaved?.();
+        } catch (err) {
+            setMessage(err.response?.data?.message || 'Failed to save hierarchy.');
         } finally {
             setSaving(false);
         }
@@ -499,7 +567,7 @@ function HierarchyCanvasInner({ orgId, isOwner, currentUserRoleName }) {
                 <Typography variant="caption" color="primary.main">🔗 Drag <strong>blue dot (bottom)</strong> → card to connect</Typography>
                 <Typography variant="caption" color="error.main">🗑 Click a line then press <strong>Delete</strong> to remove</Typography>
                 {!isOwner && (
-                    <Typography variant="caption" sx={{ color: '#D97706' }}>⚠️ You can only add/connect roles below your level</Typography>
+                    <Typography variant="caption" sx={{ color: '#D97706' }}>⚠️ You can only add/connect roles below your own</Typography>
                 )}
             </Box>
 
@@ -539,12 +607,40 @@ function HierarchyCanvasInner({ orgId, isOwner, currentUserRoleName }) {
                     <MiniMap nodeStrokeWidth={3} zoomable pannable style={{ height: 80 }} />
                 </ReactFlow>
             </Box>
+
+            {/* Edit Role Quota Dialog */}
+            <Dialog open={!!editingNodeId} onClose={() => setEditingNodeId(null)} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: '14px', p: 1 } }}>
+                <DialogTitle sx={{ fontWeight: 800, color: '#0F172A', fontSize: '1.1rem' }}>
+                    Edit Role Quota & Limits
+                </DialogTitle>
+                <DialogContent>
+                    <Typography variant="body2" sx={{ mb: 2, color: '#475569' }}>
+                        Set the maximum storage quota allowed for staff members assigned to this role in the hierarchy.
+                    </Typography>
+                    <TextField
+                        label="Role Storage Limit (GB)"
+                        type="number"
+                        fullWidth
+                        size="small"
+                        placeholder="e.g. 50 (Leave blank for Org Default)"
+                        value={editRoleQuota}
+                        onChange={(e) => setEditRoleQuota(e.target.value)}
+                        helperText="Must not exceed the Organization per-member cap or superior's assigned quota."
+                        inputProps={{ min: 1 }}
+                        sx={{ mt: 1 }}
+                    />
+                </DialogContent>
+                <DialogActions sx={{ p: 2, pt: 0 }}>
+                    <Button onClick={() => setEditingNodeId(null)} sx={{ fontWeight: 600, color: '#64748B' }}>Cancel</Button>
+                    <Button onClick={handleSaveRoleQuota} variant="contained" sx={{ borderRadius: '8px', fontWeight: 700 }}>Apply Quota</Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 }
 
 // ─── Wrapper with ReactFlowProvider ──────────────────────────────────────────
-export default function RoleHierarchyCanvas({ orgId, orgOwnerId, members = [], currentUserMembership }) {
+export default function RoleHierarchyCanvas({ orgId, orgOwnerId, members = [], currentUserMembership, onSaved }) {
     const user = useAuthStore(state => state.user);
     const isOwner = orgOwnerId === user?.id;
     const currentUserRoleName = currentUserMembership?.role_name || null;
@@ -560,7 +656,7 @@ export default function RoleHierarchyCanvas({ orgId, orgOwnerId, members = [], c
                     display: 'flex', alignItems: 'center', gap: 1
                 }}>
                     <Typography variant="caption" sx={{ color: '#C2410C', fontWeight: 600 }}>
-                        🔒 You are logged in as <strong>{currentUserRoleName}</strong> — you can only manage roles that are strictly below your level.
+                        🔒 You are logged in as <strong>{currentUserRoleName}</strong> — you can only edit roles strictly below your own. Your own card and everything above it are locked.
                     </Typography>
                 </Box>
             )}
@@ -569,6 +665,7 @@ export default function RoleHierarchyCanvas({ orgId, orgOwnerId, members = [], c
                     orgId={orgId}
                     isOwner={isOwner}
                     currentUserRoleName={currentUserRoleName}
+                    onSaved={onSaved}
                 />
             </ReactFlowProvider>
         </Box>

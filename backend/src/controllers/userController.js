@@ -45,12 +45,13 @@ exports.updateProfile = async (req, res, next) => {
         query += ` WHERE id = $${paramIndex} RETURNING id, email, full_name, role_id, profile_picture`;
         params.push(userId);
 
-        const result = await db.query(query, params);
-        if (result.rowCount === 0) {
+        await db.query(query, params);
+        
+        const userRepository = require('../repositories/userRepository');
+        const user = await userRepository.findById(userId);
+        if (!user) {
             return next(new AppError('User not found', 404));
         }
-
-        const user = result.rows[0];
         let profilePictureUrl = null;
         if (user.profile_picture) {
             const cosService = require('../services/cosService');

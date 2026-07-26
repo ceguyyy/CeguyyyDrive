@@ -3,8 +3,8 @@ const approvalTemplateService = require('../services/approvalTemplateService');
 exports.createTemplate = async (req, res, next) => {
     try {
         const { orgId } = req.params;
-        const { name, steps } = req.body;
-        const template = await approvalTemplateService.createTemplate(orgId, name, req.user.id, steps);
+        const { name, steps, revisionPolicy } = req.body;
+        const template = await approvalTemplateService.createTemplate(orgId, name, req.user.id, steps, revisionPolicy);
         res.status(201).json({
             status: 'success',
             data: { template }
@@ -31,8 +31,8 @@ exports.getTemplatesByOrg = async (req, res, next) => {
 exports.updateTemplate = async (req, res, next) => {
     try {
         const { orgId, id } = req.params;
-        const { name, steps } = req.body;
-        const template = await approvalTemplateService.updateTemplate(orgId, id, name, steps);
+        const { name, steps, revisionPolicy } = req.body;
+        const template = await approvalTemplateService.updateTemplate(orgId, id, name, steps, revisionPolicy);
         res.status(200).json({
             status: 'success',
             data: { template }

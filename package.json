@@ -4,8 +4,11 @@
   "private": true,
   "description": "CeguyyyDrive Cloud Storage System Monorepo",
   "scripts": {
-    "ctx7": "npx -y @upstash/context7-mcp",
-    "ctx7:setup": "npx -y ctx7 setup",
+    "dev": "npx -y concurrently \"npm --prefix backend run dev\" \"npm --prefix frontend run dev\"",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "migrate": "npm --prefix backend run migrate",
     "docker:up": "docker-compose up -d --build",
     "docker:down": "docker-compose down",
     "docker:logs": "docker-compose logs -f",

@@ -23,6 +23,7 @@ export default function Login() {
     const [otpCode, setOtpCode] = useState('');
     const [otpMessage, setOtpMessage] = useState('');
     const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+    const [isResendingOtp, setIsResendingOtp] = useState(false);
 
     const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
         resolver: zodResolver(schema)
@@ -56,15 +57,14 @@ export default function Login() {
                         randstr: res.randstr
                     });
                 } else {
-                    // Fallback if user closes captcha or domain is restricted
-                    await executeLogin(data);
+                    setServerError('Captcha verification was canceled or failed.');
                 }
             }, {});
             
             captchaRef.current = captcha;
             captcha.show();
-        } catch (err) {
-            console.warn("Captcha initialization error, proceeding with direct login.", err);
+        } catch (e) {
+            console.error("TencentCaptcha init error:", e);
             executeLogin(data);
         }
     };
@@ -85,6 +85,20 @@ export default function Login() {
             }
         } catch (err) {
             setServerError(err.response?.data?.message || err.message || 'Login failed');
+        }
+    };
+
+    const handleResendOtp = async () => {
+        if (!pendingEmail) return;
+        setIsResendingOtp(true);
+        setServerError('');
+        try {
+            const res = await api.post('/auth/resend-otp', { email: pendingEmail });
+            setOtpMessage(res.data?.data?.message || 'A new verification code has been sent.');
+        } catch (err) {
+            setServerError(err.response?.data?.message || 'Failed to resend OTP code');
+        } finally {
+            setIsResendingOtp(false);
         }
     };
 
@@ -120,7 +134,7 @@ export default function Login() {
                 <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', flexDirection: 'column' }}>
                     <CloudLogo size={56} sx={{ mb: 1.5 }} />
                     <Typography component="h1" variant="h5" fontWeight="bold">
-                        {step === 'otp' ? 'Telegram OTP Verification' : 'CeguyyyDrive'}
+                        {step === 'otp' ? 'Email OTP Verification' : 'CeguyyyDrive'}
                     </Typography>
                 </Box>
 
@@ -189,14 +203,14 @@ export default function Login() {
                 ) : (
                     <Box component="form" onSubmit={handleVerifyOtp} sx={{ width: '100%', mt: 1 }}>
                         <Alert severity="info" sx={{ width: '100%', mb: 2 }}>
-                            {otpMessage || 'OTP code sent via Telegram. Valid for 5 minutes.'}
+                            {otpMessage || 'OTP code sent to your email. Valid for 5 minutes.'}
                         </Alert>
                         <TextField
                             margin="normal"
                             required
                             fullWidth
                             id="otpCode"
-                            label="6-Digit Telegram OTP"
+                            label="6-Digit Verification Code"
                             placeholder="123456"
                             value={otpCode}
                             onChange={(e) => setOtpCode(e.target.value)}
@@ -207,10 +221,21 @@ export default function Login() {
                             type="submit"
                             fullWidth
                             variant="contained"
-                            sx={{ mt: 3, mb: 2, py: 1.5 }}
-                            disabled={isVerifyingOtp}
+                            sx={{ mt: 3, mb: 1, py: 1.5 }}
+                            disabled={isVerifyingOtp || isResendingOtp}
                         >
                             {isVerifyingOtp ? 'Verifying OTP...' : 'Verify OTP & Enter'}
+                        </Button>
+                        <Button
+                            type="button"
+                            fullWidth
+                            variant="outlined"
+                            color="secondary"
+                            onClick={handleResendOtp}
+                            disabled={isResendingOtp || isVerifyingOtp}
+                            sx={{ mb: 2, py: 1 }}
+                        >
+                            {isResendingOtp ? 'Resending Code...' : 'Resend OTP Code'}
                         </Button>
                         <Box textAlign="center">
                             <Button variant="text" size="small" onClick={() => setStep('credentials')}>

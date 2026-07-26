@@ -52,10 +52,13 @@ function ChatInner({ isAddFriendOpen, setIsAddFriendOpen, sdkAppId, userId, user
             setLoginStatus('success');
             // Sync real name & avatar to Tencent profile
             try {
-                await loginStore.setSelfInfo({
-                    nick: userName || userId,
-                    ...(userAvatar ? { avatar: userAvatar } : {}),
-                });
+                const profilePayload = {
+                    nick: String(userName || userId || '')
+                };
+                if (userAvatar && typeof userAvatar === 'string' && userAvatar.startsWith('http')) {
+                    profilePayload.avatar = userAvatar;
+                }
+                await loginStore.setSelfInfo(profilePayload);
                 console.log('[Chat] setSelfInfo ok, nick:', userName);
             } catch (e) {
                 console.log('[Chat] setSelfInfo error (non-critical):', e?.message);
