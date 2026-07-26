@@ -93,14 +93,18 @@ Dropdown · Label · Pipeline · Checklist · File · Drive file reference · Fo
 
 Excel-style: `SUM`, `IF`, `=`, arithmetic, cross-column references.
 
-**Never `eval`.** A formula is user input that other members of the
-organization will trigger; `eval` or `new Function` on it is remote code
-execution against the server. This needs a real parser with a fixed function
-allowlist — evaluate `formulajs` or `hot-formula-parser` for licence and
-maintenance before committing.
+**Decided: evaluated client-side, result saved to the server.** See Decisions
+below for the two consequences that must be designed around — a persisted
+client-computed value is user-controllable, and it goes stale when the rows it
+references change.
 
-Also needs: cycle detection (A references B references A), and a decision on
-whether formulas evaluate server-side on write or client-side on read.
+**Never `eval`, on either side.** A formula is user input that other members of
+the organization will trigger. `eval` or `new Function` is remote code execution
+on the server, and cross-site scripting in the browser. This needs a real parser
+with a fixed function allowlist — evaluate `formulajs` or `hot-formula-parser`
+for licence and maintenance before committing.
+
+Also needs cycle detection (A references B references A).
 
 ### Webhooks
 
@@ -122,9 +126,12 @@ Events: `row.created`, `row.updated`, `row.deleted`.
 
 ### Permissions
 
-Reuse `roleHierarchyService`. A board belongs to an organization, so visibility
-should follow the same subtree rule already enforced for members and drive
-folders rather than inventing a second model.
+**Decided: a per-board setting — public, or restricted to a role subtree.**
+
+Public means the whole organization. Restricted reuses `roleHierarchyService`,
+the same subtree rule already enforced for members and drive folders, rather
+than inventing a second model. Default to restricted, so a board cannot leak by
+omission.
 
 ---
 
@@ -139,10 +146,11 @@ A sidebar entry rendering analytics over CRM data.
 
 ### Design notes
 
-- **PDF with charts is the hard part.** Charts render in the browser; a PDF is
-  produced on the server. Either render server-side with a headless browser, or
-  capture the client canvases and send images up. Decide before building the
-  widget layer — it constrains how charts are drawn.
+- **PDF with charts — decided: client capture.** The browser captures its
+  canvases and uploads them with the report request; the server composes the PDF
+  from those images. No headless browser in the deployment. The cost is that a
+  report cannot be produced by a scheduled job, since there is no browser to
+  capture from — scheduled reports would be a second rendering path.
 - Pivot tables need their own aggregation query builder; they are not a chart
   type with different styling.
 - Reports read across an organization's boards, so the same permission rule as
@@ -156,18 +164,62 @@ A sidebar entry rendering analytics over CRM data.
 large imports and exports all need work that outlives a request. Adding it once,
 first, is cheaper than three ad-hoc `setTimeout` implementations.
 
-**Billing.** CRM and Reporting are billable surfaces. They should follow the
-pattern already in place for Integration: a `feature_*_enabled` column on
-`organizations`, `org_licenses`, and `subscription_tiers`, enforced server-side
-and not merely hidden in the sidebar.
+**Billing.** CRM and Reporting are billable surfaces, and **CRM storage is
+quota'd through the Billing service** (decided). Both follow the pattern already
+in place for Integration: columns on `organizations`, `org_licenses`, and
+`subscription_tiers`, enforced server-side and not merely hidden in the sidebar.
+
+Settle whether the CRM quota counts rows, the bytes of attached files, or both.
+Attached files already consume drive storage, so counting them again would
+overstate what an organization is using.
 
 ---
 
-## Open questions to settle before any of this starts
+## Decisions made (2026-07-26)
 
-1. Cell storage: JSONB per row, or EAV? Everything in B is built on the answer.
-2. Formula evaluation: server-side on write, or client-side on read?
-3. AI provider, cost model, and whether customer content may leave the platform.
-4. PDF chart rendering: headless browser server-side, or client capture?
-5. Does CRM data count against the organization's storage quota?
-6. Is a board visible to the whole organization, or scoped by role subtree?
+**Formula evaluation — client-side, result persisted to the server.**
+The browser computes; saving sends the computed value up.
+
+Two consequences to design around, not to discover later:
+
+- A persisted value the client computed is user-controllable. Anyone can post
+  an arbitrary number to the cell that a formula claims produced it. The server
+  must therefore never trust a formula result for anything that grants or bills
+  — quota, entitlement, approval thresholds. If a formula ever needs to be
+  authoritative, it has to be recomputed server-side at that moment.
+- Values go stale. A formula referencing another row does not recompute when
+  that row changes elsewhere, so a cell can display a figure that no longer
+  follows from its inputs. Either recompute on board load, or store the inputs'
+  version alongside the result and mark it stale.
+
+Keep the evaluator's function allowlist shared between client and any future
+server recomputation, so the two cannot disagree about what `SUM` means.
+
+**PDF chart rendering — client capture.**
+Canvases are captured in the browser and uploaded with the report request; the
+server composes the PDF from images. Avoids a headless browser in the
+deployment. Means a report cannot be generated by a scheduled job with no
+browser attached — if scheduled reports are ever wanted, that is a second
+rendering path, not a setting.
+
+**Board visibility — per-board setting: public or role-subtree restricted.**
+"Public" means the whole organization. "Restricted" reuses the existing subtree
+rule from `roleHierarchyService`, the same one governing members and drive
+folders. Stored on the board, defaulting to restricted — a board that leaks by
+omission is worse than one that has to be opened deliberately.
+
+**CRM storage quota — configurable in the Billing service.**
+Follows the pattern already in place for Integration: a column on
+`organizations`, `org_licenses`, and `subscription_tiers`, enforced server-side.
+Decide whether it is a row count, a byte count over attached files, or both —
+attached files already consume drive storage, so counting them twice would
+overstate usage.
+
+## Still open
+
+1. **Cell storage: JSONB per row, or EAV?** Unanswered, and still the most
+   expensive to reverse — everything in B is built on it. Settle before any
+   code.
+2. **AI provider, cost model, and whether customer content may leave the
+   platform.** Marked TBD. This is a legal and commercial decision before a
+   technical one, and it determines whether section A is viable at all.

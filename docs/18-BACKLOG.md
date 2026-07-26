@@ -12,9 +12,14 @@ Build order matters — Reporting has nothing to report on until CRM exists.
 - [ ] **Prerequisite: a job queue.** None exists. AI summarisation, webhook
       delivery, and bulk import/export all need it.
 
-Six open decisions are listed at the end of that document; the cell storage
-model and the formula evaluation strategy in particular should be settled before
-any code is written, because everything else in B rests on them.
+Four of the six open decisions are settled (formula evaluation, PDF rendering,
+board visibility, CRM quota). **Two remain, both blocking:**
+
+- [ ] **Cell storage model** — JSONB per row or EAV. The most expensive to
+      reverse; everything in B is built on it.
+- [ ] **AI provider, cost model, and whether customer content may leave the
+      platform.** A legal and commercial call before a technical one, and it
+      determines whether A is viable at all.
 
 ## High Priority
 - [ ] Implement Neon DB Connection Pool in Node.js.
