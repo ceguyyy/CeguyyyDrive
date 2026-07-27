@@ -15,6 +15,7 @@ import {
 import CloudLogo from '../components/ui/CloudLogo';
 import Wireframe from '../components/landing/Wireframe';
 import { useRevealOnScroll } from '../hooks/useRevealOnScroll';
+import { useRotatingWord, useParallax } from '../hooks/useLandingMotion';
 
 // The brand bar from the mark, reused as the page's accent vocabulary so the
 // landing and the logo are visibly the same system.
@@ -66,6 +67,10 @@ const JOURNEY = [
     { when: 'Next', what: 'CRM and reporting', body: 'Boards and records, then analytics built on top of them.' }
 ];
 
+// The surfaces the platform covers, cycled through the headline so the sentence
+// states the breadth without listing it.
+const ROTATING = ['CRM', 'DMS', 'Integration', 'Approvals', 'Organization', 'Company Drive'];
+
 const UPDATES = [
     { date: 'Latest', title: 'Hierarchy-governed member suspension', body: 'A Manager can suspend a Staff member. Nobody can suspend upward.' },
     { date: 'Latest', title: 'Scoped integration keys', body: 'Six scopes, hashed at rest, shown once and never again.' },
@@ -94,6 +99,9 @@ function SectionLabel({ children, light = false }) {
 
 export default function LandingPage() {
     const [navOpen, setNavOpen] = useState(false);
+    const rotating = useRotatingWord(ROTATING);
+    const heroArt = useParallax(0.09);
+    const quoteArt = useParallax(0.06);
 
     return (
         <Box sx={{ bgcolor: '#FFFFFF', color: '#37352F', overflowX: 'hidden' }}>
@@ -106,6 +114,14 @@ export default function LandingPage() {
                     borderBottom: '1px solid rgba(255,255,255,0.08)'
                 }}
             >
+                {/* The mark's bar, laid flat across the top. It ties the nav to the
+                    logo and gives the bar an edge instead of ending in flat grey. */}
+                <Stack direction="row" sx={{ height: 3 }}>
+                    <Box sx={{ flex: 1, bgcolor: ORANGE }} />
+                    <Box sx={{ flex: 1, bgcolor: RED }} />
+                    <Box sx={{ flex: 1, bgcolor: BLUE }} />
+                </Stack>
+
                 <Container maxWidth="lg">
                     <Stack direction="row" alignItems="center" sx={{ height: 68, gap: 2 }}>
                         <Stack direction="row" alignItems="center" spacing={1.25} sx={{ flexShrink: 0 }}>
@@ -141,10 +157,14 @@ export default function LandingPage() {
 
                         <Box sx={{ flex: { xs: 1, md: 0 } }} />
 
+                        {/* Both buttons share one height so they sit on a common
+                            baseline. Left to their own padding they differ, which is
+                            what made the filled one look dropped out of the bar. */}
                         <Stack direction="row" spacing={1.25} alignItems="center" sx={{ display: { xs: 'none', sm: 'flex' } }}>
                             <Button
-                                component={RouterLink} to="/login"
+                                component={RouterLink} to="/login" disableElevation
                                 sx={{
+                                    height: 38, px: 2, borderRadius: 2, lineHeight: 1,
                                     color: 'rgba(255,255,255,0.85)', textTransform: 'none', fontWeight: 600,
                                     '&:hover': { color: '#fff', bgcolor: 'rgba(255,255,255,0.08)' }
                                 }}
@@ -152,10 +172,11 @@ export default function LandingPage() {
                                 Sign In
                             </Button>
                             <Button
-                                component={RouterLink} to="/register" variant="contained"
+                                component={RouterLink} to="/register" variant="contained" disableElevation
                                 sx={{
+                                    height: 38, px: 2.25, borderRadius: 2, lineHeight: 1,
                                     bgcolor: '#fff', color: CHARCOAL, textTransform: 'none', fontWeight: 700,
-                                    borderRadius: 2, px: 2.25, boxShadow: 'none',
+                                    boxShadow: 'none',
                                     '&:hover': { bgcolor: '#EFEFED', boxShadow: 'none' }
                                 }}
                             >
@@ -204,7 +225,7 @@ export default function LandingPage() {
 
                 <Container maxWidth="lg" sx={{ py: { xs: 8, md: 14 } }}>
                     <Grid container spacing={{ xs: 5, md: 8 }} alignItems="center">
-                        <Grid item xs={12} md={6}>
+                        <Grid size={{ xs: 12, md: 6 }}>
                             <Reveal>
                                 <SectionLabel light>Enterprise Document Platform</SectionLabel>
                                 <Typography
@@ -217,7 +238,17 @@ export default function LandingPage() {
                                         mb: 3
                                     }}
                                 >
-                                    Your documents,
+                                    Your{' '}
+                                    {/* min-width reserves room for the longest word, so
+                                        the line does not reflow on every swap. */}
+                                    <Box
+                                        component="span"
+                                        aria-live="polite"
+                                        sx={{ ...rotating.fadeSx, color: ORANGE, minWidth: { md: '5.6em' } }}
+                                    >
+                                        {rotating.word}
+                                    </Box>
+                                    ,
                                     <Box component="span" sx={{ display: 'block', color: 'rgba(255,255,255,0.55)' }}>
                                         governed by your org chart.
                                     </Box>
@@ -254,8 +285,9 @@ export default function LandingPage() {
                             </Reveal>
                         </Grid>
 
-                        <Grid item xs={12} md={6}>
+                        <Grid size={{ xs: 12, md: 6 }}>
                             <Reveal>
+                                <Box ref={heroArt.ref} sx={heroArt.parallaxSx}>
                                 <Wireframe
                                     width={880} height={620}
                                     label="Hero — product screenshot or illustration"
@@ -263,6 +295,7 @@ export default function LandingPage() {
                                         backgroundImage: 'repeating-linear-gradient(135deg, transparent, transparent 11px, rgba(255,255,255,0.06) 11px, rgba(255,255,255,0.06) 22px)',
                                         '& p, & span': { color: 'rgba(255,255,255,0.85) !important' } }}
                                 />
+                                </Box>
                             </Reveal>
                         </Grid>
                     </Grid>
@@ -303,7 +336,7 @@ export default function LandingPage() {
 
                     <Grid container spacing={{ xs: 3, md: 4 }}>
                         {PILLARS.map((p) => (
-                            <Grid item xs={12} sm={6} key={p.name}>
+                            <Grid size={{ xs: 12, sm: 6 }} key={p.name}>
                                 <Reveal>
                                     <Box
                                         sx={{
@@ -350,7 +383,7 @@ export default function LandingPage() {
 
                     <Grid container spacing={0}>
                         {NUMBERS.map((n, i) => (
-                            <Grid item xs={6} md={4} key={n.label}>
+                            <Grid size={{ xs: 6, md: 4 }} key={n.label}>
                                 <Reveal>
                                     <Box
                                         sx={{
@@ -436,12 +469,14 @@ export default function LandingPage() {
             <Box sx={{ bgcolor: '#FAFAF9', borderTop: '1px solid #EAEAEA', borderBottom: '1px solid #EAEAEA' }}>
                 <Container maxWidth="lg" sx={{ py: { xs: 8, md: 13 } }}>
                     <Grid container spacing={{ xs: 4, md: 8 }} alignItems="center">
-                        <Grid item xs={12} md={4}>
+                        <Grid size={{ xs: 12, md: 4 }}>
                             <Reveal>
-                                <Wireframe width={480} height={560} label="Portrait — leadership photo" />
+                                <Box ref={quoteArt.ref} sx={quoteArt.parallaxSx}>
+                                    <Wireframe width={480} height={560} label="Portrait — leadership photo" />
+                                </Box>
                             </Reveal>
                         </Grid>
-                        <Grid item xs={12} md={8}>
+                        <Grid size={{ xs: 12, md: 8 }}>
                             <Reveal>
                                 <Typography
                                     component="blockquote"
@@ -475,7 +510,7 @@ export default function LandingPage() {
 
                 <Grid container spacing={{ xs: 3, md: 4 }}>
                     {UPDATES.map(u => (
-                        <Grid item xs={12} md={4} key={u.title}>
+                        <Grid size={{ xs: 12, md: 4 }} key={u.title}>
                             <Reveal>
                                 <Box
                                     sx={{
@@ -545,7 +580,7 @@ export default function LandingPage() {
             <Box component="footer" sx={{ bgcolor: '#26251F', color: 'rgba(255,255,255,0.65)' }}>
                 <Container maxWidth="lg" sx={{ py: { xs: 5, md: 7 } }}>
                     <Grid container spacing={4}>
-                        <Grid item xs={12} md={5}>
+                        <Grid size={{ xs: 12, md: 5 }}>
                             <Stack direction="row" alignItems="center" spacing={1.25} sx={{ mb: 1.5 }}>
                                 <CloudLogo size={28} />
                                 <Typography sx={{ color: '#fff', fontWeight: 800 }}>AbuGreySoft Box</Typography>
@@ -556,7 +591,7 @@ export default function LandingPage() {
                             </Typography>
                         </Grid>
 
-                        <Grid item xs={6} md={3}>
+                        <Grid size={{ xs: 6, md: 3 }}>
                             <Typography sx={{ color: '#fff', fontWeight: 700, fontSize: '0.85rem', mb: 1.5 }}>Product</Typography>
                             <Stack spacing={1}>
                                 {NAV.map(item => (
@@ -568,7 +603,7 @@ export default function LandingPage() {
                             </Stack>
                         </Grid>
 
-                        <Grid item xs={6} md={4}>
+                        <Grid size={{ xs: 6, md: 4 }}>
                             <Typography sx={{ color: '#fff', fontWeight: 700, fontSize: '0.85rem', mb: 1.5 }}>Account</Typography>
                             <Stack spacing={1}>
                                 <Box component={RouterLink} to="/login" sx={{ color: 'inherit', textDecoration: 'none', fontSize: '0.88rem', '&:hover': { color: '#fff' } }}>
