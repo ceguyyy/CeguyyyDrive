@@ -205,6 +205,33 @@ class OrganizationRepository {
         return result.rows[0];
     }
 
+    // Suspension is scoped to one organization, unlike users.status which is
+    // platform-wide. The same person may be suspended here and active elsewhere.
+    async updateMemberSuspension(orgId, memberId, suspended, reason) {
+        const result = await db.query(
+            `UPDATE organization_members
+             SET suspended_at = $3,
+                 suspension_reason = $4
+             WHERE id = $1 AND organization_id = $2
+             RETURNING *`,
+            [memberId, orgId, suspended ? new Date() : null, suspended ? reason : null]
+        );
+        return result.rows[0];
+    }
+
+    // Narrower than the above: the member keeps working in the drive and loses
+    // only CRM.
+    async updateMemberCrmSuspension(orgId, memberId, suspended) {
+        const result = await db.query(
+            `UPDATE organization_members
+             SET crm_suspended_at = $3
+             WHERE id = $1 AND organization_id = $2
+             RETURNING *`,
+            [memberId, orgId, suspended ? new Date() : null]
+        );
+        return result.rows[0];
+    }
+
     async updateMemberRole(orgId, memberId, roleName) {
         const result = await db.query(
             `UPDATE organization_members
@@ -263,10 +290,10 @@ class OrganizationRepository {
             const inserted = [];
             for (const r of roles) {
                 const res = await client.query(
-                    `INSERT INTO organization_roles (id, organization_id, name, parent_role_id, canvas_position_x, canvas_position_y, color, storage_limit)
-                     VALUES (COALESCE($1, uuid_generate_v4()), $2, $3, $4, $5, $6, $7, $8)
+                    `INSERT INTO organization_roles (id, organization_id, name, parent_role_id, canvas_position_x, canvas_position_y, color, storage_limit, crm_enabled)
+                     VALUES (COALESCE($1, uuid_generate_v4()), $2, $3, $4, $5, $6, $7, $8, $9)
                      RETURNING *`,
-                    [r.id || null, orgId, r.name, r.parent_role_id || null, r.canvas_position_x || 250, r.canvas_position_y || 100, r.color || '#3B82F6', r.storage_limit || null]
+                    [r.id || null, orgId, r.name, r.parent_role_id || null, r.canvas_position_x || 250, r.canvas_position_y || 100, r.color || '#3B82F6', r.storage_limit || null, r.crm_enabled !== false]
                 );
                 const role = res.rows[0];
                 inserted.push(role);

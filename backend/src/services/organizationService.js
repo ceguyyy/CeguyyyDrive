@@ -96,6 +96,51 @@ class OrganizationService {
         };
     }
 
+    /**
+     * Suspending a member, and suspending only their CRM access.
+     *
+     * Governed by the same rule as changeMemberRole: you may act on members whose
+     * role is a strict descendant of your own. So an Owner may suspend a Manager
+     * or a Staff, a Manager may suspend a Staff, and neither a Manager nor a
+     * Staff may reach upward.
+     *
+     * Distinct from users.status, which is platform-wide and belongs to a Super
+     * Admin. This one is scoped to a single organization.
+     */
+    async #assertCanActOnMember(orgId, memberId, requesterId, action) {
+        const scope = await this.resolveActorScope(orgId, requesterId);
+        const target = await organizationRepository.findMemberById(orgId, memberId);
+        if (!target) throw new AppError('Member not found', 404);
+
+        if (target.user_id && target.user_id === scope.org.owner_id) {
+            throw new AppError(`The organization owner cannot be ${action}.`, 403);
+        }
+        if (scope.actorMember && target.id === scope.actorMember.id) {
+            throw new AppError(`You cannot ${action.replace(/ed$/, '')} yourself.`, 403);
+        }
+        if (!scope.canManageAnyRole && !scope.manageableRoleNames.includes(target.role_name)) {
+            throw new AppError(
+                permissionDeniedMessage(scope, `${action.replace(/ed$/, '')} a "${target.role_name}"`),
+                403
+            );
+        }
+        return target;
+    }
+
+    async setMemberSuspension(orgId, memberId, suspended, reason, requesterId) {
+        await this.#assertCanActOnMember(orgId, memberId, requesterId, 'suspended');
+        return await organizationRepository.updateMemberSuspension(
+            orgId, memberId, Boolean(suspended), reason || null
+        );
+    }
+
+    async setMemberCrmSuspension(orgId, memberId, suspended, requesterId) {
+        await this.#assertCanActOnMember(orgId, memberId, requesterId, 'suspended from CRM');
+        return await organizationRepository.updateMemberCrmSuspension(
+            orgId, memberId, Boolean(suspended)
+        );
+    }
+
     async changeMemberRole(orgId, memberId, roleName, requesterId) {
         const scope = await this.resolveActorScope(orgId, requesterId);
         const { org, roles, actorMember, ownerRoleName } = scope;

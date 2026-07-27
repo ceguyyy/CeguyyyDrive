@@ -61,19 +61,19 @@ class SubscriptionTierRepository {
     async create({
         name, label, storageLimitBytes, memberStorageLimitBytes, maxMembers,
         maxOrganizations, featureApprovalEnabled, featureChatEnabled,
-        featureIntegrationEnabled, featureCrmEnabled, crmMaxBoards, crmMaxRecords, sortOrder
+        featureIntegrationEnabled, featureCrmEnabled, crmMaxBoards, crmMaxRecords, crmMaxUsers, sortOrder
     }) {
         const result = await db.query(
             `INSERT INTO subscription_tiers (
                 name, label, storage_limit_bytes, member_storage_limit_bytes,
                 max_members, max_organizations, feature_approval_enabled,
                 feature_chat_enabled, feature_integration_enabled, feature_crm_enabled,
-                crm_max_boards, crm_max_records, sort_order
-             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+                crm_max_boards, crm_max_records, crm_max_users, sort_order
+             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
              RETURNING *`,
             [name, label, storageLimitBytes, memberStorageLimitBytes, maxMembers,
                 maxOrganizations, featureApprovalEnabled, featureChatEnabled,
-                featureIntegrationEnabled, featureCrmEnabled, crmMaxBoards, crmMaxRecords, sortOrder]
+                featureIntegrationEnabled, featureCrmEnabled, crmMaxBoards, crmMaxRecords, crmMaxUsers, sortOrder]
         );
         return result.rows[0];
     }
@@ -81,7 +81,7 @@ class SubscriptionTierRepository {
     async update(id, {
         name, label, storageLimitBytes, memberStorageLimitBytes, maxMembers,
         maxOrganizations, featureApprovalEnabled, featureChatEnabled,
-        featureIntegrationEnabled, featureCrmEnabled, crmMaxBoards, crmMaxRecords, sortOrder
+        featureIntegrationEnabled, featureCrmEnabled, crmMaxBoards, crmMaxRecords, crmMaxUsers, sortOrder
     }) {
         const result = await db.query(
             `UPDATE subscription_tiers
@@ -97,12 +97,13 @@ class SubscriptionTierRepository {
                  feature_crm_enabled = COALESCE($11, feature_crm_enabled),
                  crm_max_boards = COALESCE($12, crm_max_boards),
                  crm_max_records = COALESCE($13, crm_max_records),
-                 sort_order = COALESCE($14, sort_order)
+                 crm_max_users = COALESCE($14, crm_max_users),
+                 sort_order = COALESCE($15, sort_order)
              WHERE id = $1
              RETURNING *`,
             [id, name, label, storageLimitBytes, memberStorageLimitBytes, maxMembers,
                 maxOrganizations, featureApprovalEnabled, featureChatEnabled,
-                featureIntegrationEnabled, featureCrmEnabled, crmMaxBoards, crmMaxRecords, sortOrder]
+                featureIntegrationEnabled, featureCrmEnabled, crmMaxBoards, crmMaxRecords, crmMaxUsers, sortOrder]
         );
         return result.rows[0];
     }
@@ -133,14 +134,15 @@ class SubscriptionTierRepository {
                      feature_integration_enabled = $8,
                      feature_crm_enabled = $9,
                      crm_max_boards = $10,
-                     crm_max_records = $11
+                     crm_max_records = $11,
+                     crm_max_users = $12
                  WHERE plan_name = $1
                  RETURNING id`,
                 [planName, tier.storage_limit_bytes, tier.member_storage_limit_bytes,
                     tier.max_members, tier.max_organizations,
                     tier.feature_approval_enabled, tier.feature_chat_enabled,
                     tier.feature_integration_enabled, tier.feature_crm_enabled,
-                    tier.crm_max_boards, tier.crm_max_records]
+                    tier.crm_max_boards, tier.crm_max_records, tier.crm_max_users]
             );
 
             // Redeemed licences already provisioned their organization, which the
@@ -157,14 +159,15 @@ class SubscriptionTierRepository {
                      feature_integration_enabled = $8,
                      feature_crm_enabled = $9,
                      crm_max_boards = $10,
-                     crm_max_records = $11
+                     crm_max_records = $11,
+                     crm_max_users = $12
                  WHERE plan_name = $1 AND status = 'available'
                  RETURNING id`,
                 [planName, tier.storage_limit_bytes, tier.member_storage_limit_bytes,
                     tier.max_members, tier.max_organizations,
                     tier.feature_approval_enabled, tier.feature_chat_enabled,
                     tier.feature_integration_enabled, tier.feature_crm_enabled,
-                    tier.crm_max_boards, tier.crm_max_records]
+                    tier.crm_max_boards, tier.crm_max_records, tier.crm_max_users]
             );
 
             await client.query('COMMIT');

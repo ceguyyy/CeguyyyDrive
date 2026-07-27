@@ -1,15 +1,15 @@
 const db = require('../config/db');
 
 class BillingRepository {
-    async createLicenseKey({ licenseKey, ownerEmail, planName = 'Pro', storageLimitBytes = 10737418240, maxMembers = 25, memberStorageLimitBytes = 10737418240, featureApprovalEnabled = true, featureChatEnabled = true, featureIntegrationEnabled = false, featureCrmEnabled = false, crmMaxBoards = 0, crmMaxRecords = 0, maxOrganizations = 1, createdBy = null, gmtLocation = 'GMT+7 (Asia/Jakarta)', customAppTitle = null, customLogoUrl = null }) {
+    async createLicenseKey({ licenseKey, ownerEmail, planName = 'Pro', storageLimitBytes = 10737418240, maxMembers = 25, memberStorageLimitBytes = 10737418240, featureApprovalEnabled = true, featureChatEnabled = true, featureIntegrationEnabled = false, featureCrmEnabled = false, crmMaxBoards = 0, crmMaxRecords = 0, crmMaxUsers = 0, maxOrganizations = 1, createdBy = null, gmtLocation = 'GMT+7 (Asia/Jakarta)', customAppTitle = null, customLogoUrl = null }) {
         const result = await db.query(
             `INSERT INTO org_licenses (
                 license_key, owner_email, plan_name, storage_limit_bytes, max_members, member_storage_limit_bytes,
-                feature_approval_enabled, feature_chat_enabled, feature_integration_enabled, feature_crm_enabled, crm_max_boards, crm_max_records,
+                feature_approval_enabled, feature_chat_enabled, feature_integration_enabled, feature_crm_enabled, crm_max_boards, crm_max_records, crm_max_users,
                 max_organizations, status, created_by, gmt_location, custom_app_title, custom_logo_url
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'available', $14, $15, $16, $17)
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'available', $15, $16, $17, $18)
             RETURNING *`,
-            [licenseKey.trim(), ownerEmail.trim().toLowerCase(), planName, storageLimitBytes, maxMembers, memberStorageLimitBytes, featureApprovalEnabled, featureChatEnabled, featureIntegrationEnabled, featureCrmEnabled, crmMaxBoards, crmMaxRecords, maxOrganizations, createdBy, gmtLocation, customAppTitle, customLogoUrl]
+            [licenseKey.trim(), ownerEmail.trim().toLowerCase(), planName, storageLimitBytes, maxMembers, memberStorageLimitBytes, featureApprovalEnabled, featureChatEnabled, featureIntegrationEnabled, featureCrmEnabled, crmMaxBoards, crmMaxRecords, crmMaxUsers, maxOrganizations, createdBy, gmtLocation, customAppTitle, customLogoUrl]
         );
         return result.rows[0];
     }
@@ -85,7 +85,7 @@ class BillingRepository {
         return result.rows;
     }
 
-    async updateOrganizationBilling(orgId, { planName, storageLimitBytes, maxMembers, memberStorageLimitBytes, featureApprovalEnabled, featureChatEnabled, featureIntegrationEnabled, featureCrmEnabled, crmMaxBoards, crmMaxRecords, maxOrganizations, status, billingNotes, gmtLocation, customAppTitle, customLogoUrl }) {
+    async updateOrganizationBilling(orgId, { planName, storageLimitBytes, maxMembers, memberStorageLimitBytes, featureApprovalEnabled, featureChatEnabled, featureIntegrationEnabled, featureCrmEnabled, crmMaxBoards, crmMaxRecords, crmMaxUsers, maxOrganizations, status, billingNotes, gmtLocation, customAppTitle, customLogoUrl }) {
         const result = await db.query(
             `UPDATE organizations
              SET plan_name = COALESCE($2, plan_name),
@@ -98,14 +98,15 @@ class BillingRepository {
                  feature_crm_enabled = COALESCE($9, feature_crm_enabled),
                  crm_max_boards = COALESCE($10, crm_max_boards),
                  crm_max_records = COALESCE($11, crm_max_records),
-                 max_organizations = COALESCE($12, max_organizations),
-                 status = COALESCE($13, status),
-                 billing_notes = COALESCE($14, billing_notes),
-                 gmt_location = COALESCE($15, gmt_location),
-                 custom_app_title = COALESCE($16, custom_app_title),
-                 custom_logo_url = COALESCE($17, custom_logo_url)
+                 crm_max_users = COALESCE($12, crm_max_users),
+                 max_organizations = COALESCE($13, max_organizations),
+                 status = COALESCE($14, status),
+                 billing_notes = COALESCE($15, billing_notes),
+                 gmt_location = COALESCE($16, gmt_location),
+                 custom_app_title = COALESCE($17, custom_app_title),
+                 custom_logo_url = COALESCE($18, custom_logo_url)
              WHERE id = $1 RETURNING *`,
-            [orgId, planName, storageLimitBytes, maxMembers, memberStorageLimitBytes, featureApprovalEnabled, featureChatEnabled, featureIntegrationEnabled, featureCrmEnabled, crmMaxBoards, crmMaxRecords, maxOrganizations, status, billingNotes, gmtLocation, customAppTitle !== undefined ? customAppTitle : null, customLogoUrl !== undefined ? customLogoUrl : null]
+            [orgId, planName, storageLimitBytes, maxMembers, memberStorageLimitBytes, featureApprovalEnabled, featureChatEnabled, featureIntegrationEnabled, featureCrmEnabled, crmMaxBoards, crmMaxRecords, crmMaxUsers, maxOrganizations, status, billingNotes, gmtLocation, customAppTitle !== undefined ? customAppTitle : null, customLogoUrl !== undefined ? customLogoUrl : null]
         );
         return result.rows[0];
     }

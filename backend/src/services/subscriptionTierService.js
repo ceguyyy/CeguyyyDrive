@@ -94,6 +94,10 @@ function toTierFields(body = {}, { partial = false } = {}) {
         fields.crmMaxRecords = Math.max(0, Number(body.crm_max_records) || 0);
     }
 
+    if (body.crm_max_users !== undefined || !partial) {
+        fields.crmMaxUsers = Math.max(0, Number(body.crm_max_users) || 0);
+    }
+
     if (body.sort_order !== undefined) {
         fields.sortOrder = Number(body.sort_order);
     } else if (!partial) {
@@ -129,7 +133,8 @@ class SubscriptionTierService {
             featureIntegrationEnabled: tier.feature_integration_enabled,
             featureCrmEnabled: tier.feature_crm_enabled,
             crmMaxBoards: tier.crm_max_boards,
-            crmMaxRecords: tier.crm_max_records
+            crmMaxRecords: tier.crm_max_records,
+            crmMaxUsers: tier.crm_max_users
         };
     }
 

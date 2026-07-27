@@ -23,6 +23,9 @@ router.delete('/:orgId', organizationController.deleteOrganization);
 router.delete('/:orgId/members/:memberId', organizationController.removeMember);
 router.patch('/:orgId/members/:memberId/storage', organizationController.updateMemberStorageLimit);
 router.patch('/:orgId/members/:memberId/role', organizationController.changeMemberRole);
+// Hierarchy-gated, like the role change above: you may act only on members below you.
+router.patch('/:orgId/members/:memberId/suspension', organizationController.setMemberSuspension);
+router.patch('/:orgId/members/:memberId/crm-suspension', organizationController.setMemberCrmSuspension);
 router.post('/:orgId/transfer-owner', organizationController.transferOwner);
 
 // API key management for the Integration page. Owner-only, enforced in the service.

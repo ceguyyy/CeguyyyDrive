@@ -162,6 +162,28 @@ exports.getMyPermissions = async (req, res, next) => {
     }
 };
 
+exports.setMemberSuspension = async (req, res, next) => {
+    try {
+        const { orgId, memberId } = req.params;
+        const { suspended, reason } = req.body;
+        const member = await organizationService.setMemberSuspension(orgId, memberId, suspended, reason, req.user.id);
+        res.status(200).json({ status: 'success', data: { member } });
+    } catch (err) {
+        next(err);
+    }
+};
+
+exports.setMemberCrmSuspension = async (req, res, next) => {
+    try {
+        const { orgId, memberId } = req.params;
+        const { suspended } = req.body;
+        const member = await organizationService.setMemberCrmSuspension(orgId, memberId, suspended, req.user.id);
+        res.status(200).json({ status: 'success', data: { member } });
+    } catch (err) {
+        next(err);
+    }
+};
+
 exports.changeMemberRole = async (req, res, next) => {
     try {
         const { orgId, memberId } = req.params;

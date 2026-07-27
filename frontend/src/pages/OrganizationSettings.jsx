@@ -18,7 +18,10 @@ import {
     Storage as StorageIcon,
     SwitchAccount as SwitchIcon,
     FactCheck as ApprovalIcon,
-    Edit as EditIcon
+    Edit as EditIcon,
+    Block as SuspendIcon,
+    PlayArrow as ActivateIcon,
+    ViewKanban as CrmIcon
 } from '@mui/icons-material';
 import api from '../services/api';
 import RoleHierarchyCanvas from '../components/organization/RoleHierarchyCanvas';
@@ -209,6 +212,14 @@ export default function OrganizationSettings() {
         canManageAnyRole: false
     };
     const invitableRoles = permissions.assignableRoles;
+
+    // Mirrors organizationService.#assertCanActOnMember: never the owner's row,
+    // never your own, and otherwise only roles strictly below yours. The server
+    // enforces this again — hiding the button is convenience, not the control.
+    const canManageRow = (m) =>
+        m.user_id !== activeOrg?.owner_id
+        && m.id !== currentUserMember?.id
+        && (permissions.canManageAnyRole || permissions.manageableRoleNames.includes(m.role_name));
     const canInvite = invitableRoles.length > 0;
     const effectiveInviteRole = invitableRoles.includes(inviteRole)
         ? inviteRole
@@ -282,6 +293,22 @@ export default function OrganizationSettings() {
             setMemberActionError(err.response?.data?.message || 'Failed to change role');
             setTimeout(() => setMemberActionError(''), 5000);
         }
+    });
+
+    const suspendMemberMutation = useMutation({
+        mutationFn: async ({ memberId, suspended, reason }) => {
+            await api.patch(`/organizations/${activeOrgId}/members/${memberId}/suspension`, { suspended, reason });
+        },
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['org-members', activeOrgId] }),
+        onError: (err) => setInviteError(err.response?.data?.message || 'Failed to change suspension.')
+    });
+
+    const suspendCrmMutation = useMutation({
+        mutationFn: async ({ memberId, suspended }) => {
+            await api.patch(`/organizations/${activeOrgId}/members/${memberId}/crm-suspension`, { suspended });
+        },
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['org-members', activeOrgId] }),
+        onError: (err) => setInviteError(err.response?.data?.message || 'Failed to change CRM access.')
     });
 
     const removeMemberMutation = useMutation({
@@ -546,6 +573,7 @@ export default function OrganizationSettings() {
                                                     <TableCell>Role</TableCell>
                                                     <TableCell>Status</TableCell>
                                                     {isOwner && <TableCell>Storage Limit</TableCell>}
+                                                    <TableCell>Access</TableCell>
                                                     {isOwner && <TableCell>Actions</TableCell>}
                                                 </TableRow>
                                             </TableHead>
@@ -610,6 +638,43 @@ export default function OrganizationSettings() {
                                                                 />
                                                             </TableCell>
                                                         )}
+
+                                                        {/* Suspension — governed by the hierarchy, so a
+                                                            Manager sees these on a Staff row but not on
+                                                            the Owner's. Not gated on isOwner. */}
+                                                        <TableCell>
+                                                            {canManageRow(m) && (
+                                                                <Stack direction="row" spacing={0.5}>
+                                                                    <Tooltip title={m.suspended_at ? 'Reactivate in this organization' : 'Suspend from this organization'}>
+                                                                        <IconButton
+                                                                            size="small"
+                                                                            color={m.suspended_at ? 'success' : 'warning'}
+                                                                            onClick={() => suspendMemberMutation.mutate({
+                                                                                memberId: m.id,
+                                                                                suspended: !m.suspended_at,
+                                                                                reason: null
+                                                                            })}
+                                                                        >
+                                                                            {m.suspended_at ? <ActivateIcon fontSize="small" /> : <SuspendIcon fontSize="small" />}
+                                                                        </IconButton>
+                                                                    </Tooltip>
+                                                                    {activeOrg?.feature_crm_enabled && (
+                                                                        <Tooltip title={m.crm_suspended_at ? 'Restore CRM access' : 'Suspend CRM access only'}>
+                                                                            <IconButton
+                                                                                size="small"
+                                                                                color={m.crm_suspended_at ? 'default' : 'primary'}
+                                                                                onClick={() => suspendCrmMutation.mutate({
+                                                                                    memberId: m.id,
+                                                                                    suspended: !m.crm_suspended_at
+                                                                                })}
+                                                                            >
+                                                                                <CrmIcon fontSize="small" />
+                                                                            </IconButton>
+                                                                        </Tooltip>
+                                                                    )}
+                                                                </Stack>
+                                                            )}
+                                                        </TableCell>
 
                                                         {/* Remove Member */}
                                                         {isOwner && (

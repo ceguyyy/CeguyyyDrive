@@ -28,7 +28,8 @@ import {
     VisibilityOff as VisibilityOffIcon,
     CloudUpload as CloudUploadIcon,
     People as PeopleIcon,
-    Hub as HubIcon
+    Hub as HubIcon,
+    ViewKanban as ViewKanbanIcon
 } from '@mui/icons-material';
 import api from '../services/api';
 import axios from 'axios';
@@ -116,6 +117,7 @@ export default function BillingManagementPage() {
     const [editCrm, setEditCrm] = useState(false);
     const [editCrmBoards, setEditCrmBoards] = useState(0);
     const [editCrmRecords, setEditCrmRecords] = useState(0);
+    const [editCrmUsers, setEditCrmUsers] = useState(0);
 
     // Declared after the state it reads: a const cannot be referenced before
     // its initializer runs, and placing this above threw on every render.
@@ -146,6 +148,7 @@ export default function BillingManagementPage() {
     const [newCrm, setNewCrm] = useState(false);
     const [newCrmBoards, setNewCrmBoards] = useState(0);
     const [newCrmRecords, setNewCrmRecords] = useState(0);
+    const [newCrmUsers, setNewCrmUsers] = useState(0);
     const [newGmtLocation, setNewGmtLocation] = useState('GMT+7 (Asia/Jakarta)');
     const [newCustomAppTitle, setNewCustomAppTitle] = useState('');
     const [newCustomLogoUrl, setNewCustomLogoUrl] = useState('');
@@ -275,6 +278,7 @@ export default function BillingManagementPage() {
         setEditCrm(org.feature_crm_enabled === true);
         setEditCrmBoards(org.crm_max_boards ?? 0);
         setEditCrmRecords(org.crm_max_records ?? 0);
+        setEditCrmUsers(org.crm_max_users ?? 0);
         setEditNotes(org.admin_notes || '');
         setEditOrgModal(true);
     };
@@ -299,6 +303,7 @@ export default function BillingManagementPage() {
                 feature_crm_enabled: editCrm,
                 crm_max_boards: Number(editCrmBoards) || 0,
                 crm_max_records: Number(editCrmRecords) || 0,
+                crm_max_users: Number(editCrmUsers) || 0,
                 admin_notes: editNotes
             });
             const propagated = res.data?.data?.organization?.propagated_to ?? [];
@@ -359,6 +364,7 @@ export default function BillingManagementPage() {
                 featureCrmEnabled: newCrm,
                 crmMaxBoards: Number(newCrmBoards) || 0,
                 crmMaxRecords: Number(newCrmRecords) || 0,
+                crmMaxUsers: Number(newCrmUsers) || 0,
                 featureApprovalEnabled: newApproval,
                 gmtLocation: newGmtLocation,
                 customAppTitle: newCustomAppTitle ? newCustomAppTitle.trim() : null,
@@ -653,6 +659,9 @@ export default function BillingManagementPage() {
                                                             <Tooltip title={`Chat: ${o.feature_chat_enabled !== false ? 'Enabled' : 'Disabled'}`}>
                                                                 <Chip icon={<ChatIcon sx={{ fontSize: 14, color: 'inherit !important' }} />} label="Chat" size="small" sx={o.feature_chat_enabled !== false ? { bgcolor: '#EDF3EC', color: '#2B593F', fontWeight: 600, border: 'none', borderRadius: 1, height: 22, fontSize: '0.7rem' } : { bgcolor: '#F1F1EF', color: '#73726E', fontWeight: 500, border: 'none', borderRadius: 1, height: 22, fontSize: '0.7rem' }} />
                                                             </Tooltip>
+                                                            <Tooltip title={`CRM: ${o.feature_crm_enabled === true ? 'Enabled' : 'Disabled'}`}>
+                                                                <Chip icon={<ViewKanbanIcon sx={{ fontSize: 14, color: 'inherit !important' }} />} label="CRM" size="small" sx={o.feature_crm_enabled === true ? { bgcolor: '#EDF3EC', color: '#2B593F', fontWeight: 600, border: 'none', borderRadius: 1, height: 22, fontSize: '0.7rem' } : { bgcolor: '#F1F1EF', color: '#73726E', fontWeight: 500, border: 'none', borderRadius: 1, height: 22, fontSize: '0.7rem' }} />
+                                                            </Tooltip>
                                                             <Tooltip title={`Integration API: ${o.feature_integration_enabled === true ? 'Enabled' : 'Disabled'}`}>
                                                                 <Chip icon={<HubIcon sx={{ fontSize: 14, color: 'inherit !important' }} />} label="API" size="small" sx={o.feature_integration_enabled === true ? { bgcolor: '#EDF3EC', color: '#2B593F', fontWeight: 600, border: 'none', borderRadius: 1, height: 22, fontSize: '0.7rem' } : { bgcolor: '#F1F1EF', color: '#73726E', fontWeight: 500, border: 'none', borderRadius: 1, height: 22, fontSize: '0.7rem' }} />
                                                             </Tooltip>
@@ -869,6 +878,8 @@ export default function BillingManagementPage() {
                                                     value={newCrmBoards} onChange={(e) => setNewCrmBoards(e.target.value)} />
                                                 <TextField label="Max CRM Records" type="number" size="small" fullWidth
                                                     value={newCrmRecords} onChange={(e) => setNewCrmRecords(e.target.value)} />
+                                                <TextField label="Max CRM Users" type="number" size="small" fullWidth
+                                                    value={newCrmUsers} onChange={(e) => setNewCrmUsers(e.target.value)} />
                                             </Stack>
                                         )}
                                     </Box>
@@ -1323,6 +1334,9 @@ export default function BillingManagementPage() {
                                     <TextField label="Max CRM Records" type="number" size="small" fullWidth
                                         value={editCrmRecords} onChange={(e) => setEditCrmRecords(e.target.value)}
                                         helperText="Rows across all tables" />
+                                    <TextField label="Max CRM Users" type="number" size="small" fullWidth
+                                        value={editCrmUsers} onChange={(e) => setEditCrmUsers(e.target.value)}
+                                        helperText="Seats" />
                                 </Stack>
                             )}
                         </Box>
