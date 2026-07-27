@@ -14,7 +14,8 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import {
-    Box, Button, Typography, Paper, TextField, IconButton, Chip, Stack, Alert, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions
+    Box, Button, Typography, Paper, TextField, IconButton, Chip, Stack, Alert, Tooltip,
+    Dialog, DialogTitle, DialogContent, DialogActions, Divider, Switch, FormControlLabel
 } from '@mui/material';
 import {
     Add as AddIcon,
@@ -110,6 +111,18 @@ function RoleNode({ id, data, isConnectable }) {
                     </Typography>
                 </Box>
 
+                {/* Only shown when off: the default is enabled, and a badge on
+                    every card for the normal case would be noise. */}
+                {data.crm_enabled === false && (
+                    <Box sx={{ mb: 1 }}>
+                        <Chip
+                            size="small"
+                            label="CRM off"
+                            sx={{ height: 18, fontSize: '0.6rem', fontWeight: 700, bgcolor: '#FEE2E2', color: '#B91C1C' }}
+                        />
+                    </Box>
+                )}
+
                 {/* Superior */}
                 {superiorName ? (
                     <Box sx={{ mb: 0.5 }}>
@@ -187,6 +200,9 @@ function HierarchyCanvasInner({ orgId, isOwner, currentUserRoleName, storageLimi
     const [message, setMessage] = useState('');
     const [editingNodeId, setEditingNodeId] = useState(null);
     const [editRoleQuota, setEditRoleQuota] = useState('');
+    // Undefined in the stored row means the column predates migration 025, which
+    // defaults it to true — so absent reads as enabled, not disabled.
+    const [editRoleCrm, setEditRoleCrm] = useState(true);
 
     const handleEditNode = useCallback((id) => {
         setNodes(nds => {
@@ -194,6 +210,7 @@ function HierarchyCanvasInner({ orgId, isOwner, currentUserRoleName, storageLimi
             if (node) {
                 setEditingNodeId(id);
                 setEditRoleQuota(node.data.storage_limit ? String(node.data.storage_limit) : '');
+                setEditRoleCrm(node.data.crm_enabled !== false);
             }
             return nds;
         });
@@ -204,7 +221,8 @@ function HierarchyCanvasInner({ orgId, isOwner, currentUserRoleName, storageLimi
             ...n,
             data: {
                 ...n.data,
-                storage_limit: editRoleQuota !== '' && !isNaN(editRoleQuota) ? parseFloat(editRoleQuota) : null
+                storage_limit: editRoleQuota !== '' && !isNaN(editRoleQuota) ? parseFloat(editRoleQuota) : null,
+                crm_enabled: editRoleCrm
             }
         } : n));
         setEditingNodeId(null);
@@ -289,6 +307,7 @@ function HierarchyCanvasInner({ orgId, isOwner, currentUserRoleName, storageLimi
                     nodeDepth,
                     canEdit,
                     storage_limit: r.storage_limit ? Math.round(parseInt(r.storage_limit, 10) / (1024 * 1024 * 1024)) : null,
+                    crm_enabled: r.crm_enabled !== false,
                     onDelete: (id) => handleDeleteNode(id),
                     onEdit: (id) => handleEditNode(id),
                 }
@@ -449,6 +468,7 @@ function HierarchyCanvasInner({ orgId, isOwner, currentUserRoleName, storageLimi
                 nodeDepth: myNode ? (myNode.data.nodeDepth ?? 0) + 1 : 999,
                 canEdit: true,
                 storage_limit: null,
+                crm_enabled: true,
                 onDelete: (nid) => handleDeleteNode(nid),
                 onEdit: (nid) => handleEditNode(nid),
             }
@@ -512,6 +532,7 @@ function HierarchyCanvasInner({ orgId, isOwner, currentUserRoleName, storageLimi
                     canvas_position_y: Math.round(n.position.y),
                     color: n.data.color,
                     storage_limit: n.data.storage_limit ? Math.round(parseFloat(n.data.storage_limit) * 1024 * 1024 * 1024) : null,
+                    crm_enabled: n.data.crm_enabled !== false,
                 };
             });
             await api.post(`/organizations/${orgId}/roles`, { roles: formattedRoles });
@@ -629,6 +650,22 @@ function HierarchyCanvasInner({ orgId, isOwner, currentUserRoleName, storageLimi
                         inputProps={{ min: 1 }}
                         sx={{ mt: 1 }}
                     />
+
+                    <Divider sx={{ my: 2 }} />
+
+                    <FormControlLabel
+                        control={
+                            <Switch
+                                checked={editRoleCrm}
+                                onChange={(e) => setEditRoleCrm(e.target.checked)}
+                            />
+                        }
+                        label={<Typography variant="body2" fontWeight={600}>CRM access for this role</Typography>}
+                    />
+                    <Typography variant="caption" sx={{ display: 'block', color: '#64748B' }}>
+                        Switching this off removes CRM for everyone holding this role. It has no effect
+                        unless CRM is enabled for the organization in Billing.
+                    </Typography>
                 </DialogContent>
                 <DialogActions sx={{ p: 2, pt: 0 }}>
                     <Button onClick={() => setEditingNodeId(null)} sx={{ fontWeight: 600, color: '#64748B' }}>Cancel</Button>
