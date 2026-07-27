@@ -123,28 +123,39 @@ export default function LandingPage() {
                 </Stack>
 
                 <Container maxWidth="lg">
-                    <Stack direction="row" alignItems="center" sx={{ height: 68, gap: 2 }}>
+                    {/* minHeight, not height: the row may never be shorter than the
+                        bar, but it must be free to grow rather than let a child
+                        overflow it and drag the alignment off. */}
+                    <Stack direction="row" alignItems="center" sx={{ minHeight: 76, gap: 2 }}>
                         <Stack direction="row" alignItems="center" spacing={1.25} sx={{ flexShrink: 0 }}>
                             <CloudLogo size={30} />
-                            <Box sx={{ lineHeight: 1 }}>
-                                <Typography sx={{ color: '#fff', fontWeight: 800, fontSize: '0.95rem', letterSpacing: '-0.01em' }}>
+                            {/* A flex column with its own centring: two stacked lines
+                                otherwise sit wherever Typography's inherited
+                                line-height puts them, which is not the optical middle. */}
+                            <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                <Typography sx={{ color: '#fff', fontWeight: 800, fontSize: '0.95rem', lineHeight: 1.15, letterSpacing: '-0.01em' }}>
                                     AbuGreySoft
                                 </Typography>
-                                <Typography sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.68rem', letterSpacing: '0.08em' }}>
+                                <Typography sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.68rem', lineHeight: 1.15, letterSpacing: '0.08em' }}>
                                     BOX
                                 </Typography>
                             </Box>
                         </Stack>
 
-                        <Stack direction="row" spacing={3} sx={{ ml: 4, flex: 1, display: { xs: 'none', md: 'flex' } }}>
+                        {/* Without alignItems the default is stretch, so each anchor
+                            grew to the full bar height and its text sat against the
+                            top of its own padding. That was the misalignment. */}
+                        <Stack direction="row" spacing={3} alignItems="center" sx={{ ml: 4, flex: 1, display: { xs: 'none', md: 'flex' } }}>
                             {NAV.map(item => (
                                 <Box
                                     key={item.href}
                                     component="a"
                                     href={item.href}
                                     sx={{
+                                        display: 'flex', alignItems: 'center',
                                         color: 'rgba(255,255,255,0.72)', textDecoration: 'none',
-                                        fontSize: '0.86rem', fontWeight: 500, py: 1,
+                                        fontSize: '0.86rem', fontWeight: 500,
+                                        height: 34, lineHeight: 1,
                                         borderBottom: '2px solid transparent',
                                         transition: 'color 160ms ease, border-color 160ms ease',
                                         '&:hover': { color: '#fff', borderBottomColor: ORANGE }
