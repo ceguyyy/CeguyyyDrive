@@ -85,6 +85,15 @@ function toTierFields(body = {}, { partial = false } = {}) {
         fields.featureCrmEnabled = false;
     }
 
+    // Zero means none. A tier that enables CRM without a quota grants nothing,
+    // which is deliberate — enabling and allowancing are separate decisions.
+    if (body.crm_max_boards !== undefined || !partial) {
+        fields.crmMaxBoards = Math.max(0, Number(body.crm_max_boards) || 0);
+    }
+    if (body.crm_max_records !== undefined || !partial) {
+        fields.crmMaxRecords = Math.max(0, Number(body.crm_max_records) || 0);
+    }
+
     if (body.sort_order !== undefined) {
         fields.sortOrder = Number(body.sort_order);
     } else if (!partial) {
@@ -118,7 +127,9 @@ class SubscriptionTierService {
             featureApprovalEnabled: tier.feature_approval_enabled,
             featureChatEnabled: tier.feature_chat_enabled,
             featureIntegrationEnabled: tier.feature_integration_enabled,
-            featureCrmEnabled: tier.feature_crm_enabled
+            featureCrmEnabled: tier.feature_crm_enabled,
+            crmMaxBoards: tier.crm_max_boards,
+            crmMaxRecords: tier.crm_max_records
         };
     }
 

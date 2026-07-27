@@ -51,7 +51,9 @@ function hardcodedPlanDefaults(planName = '') {
             featureApprovalEnabled: false,
             featureChatEnabled: false,
             featureIntegrationEnabled: false,
-            featureCrmEnabled: false
+            featureCrmEnabled: false,
+            crmMaxBoards: 0,
+            crmMaxRecords: 0
         };
     } else if (p === 'pro') {
         return {
@@ -61,7 +63,9 @@ function hardcodedPlanDefaults(planName = '') {
             featureApprovalEnabled: true,
             featureChatEnabled: true,
             featureIntegrationEnabled: true,
-            featureCrmEnabled: false
+            featureCrmEnabled: false,
+            crmMaxBoards: 0,
+            crmMaxRecords: 0
         };
     } else if (p === 'enterprise') {
         return {
@@ -71,7 +75,9 @@ function hardcodedPlanDefaults(planName = '') {
             featureApprovalEnabled: true,
             featureChatEnabled: true,
             featureIntegrationEnabled: true,
-            featureCrmEnabled: false
+            featureCrmEnabled: false,
+            crmMaxBoards: 0,
+            crmMaxRecords: 0
         };
     }
     return {
@@ -81,7 +87,9 @@ function hardcodedPlanDefaults(planName = '') {
         featureApprovalEnabled: true,
         featureChatEnabled: true,
         featureIntegrationEnabled: false,
-        featureCrmEnabled: false
+        featureCrmEnabled: false,
+        crmMaxBoards: 0,
+        crmMaxRecords: 0
     };
 }
 
@@ -110,6 +118,8 @@ async function toBillingUpdate(body = {}) {
         featureChatEnabled: body.feature_chat_enabled !== undefined ? body.feature_chat_enabled : defaults.featureChatEnabled,
         featureIntegrationEnabled: body.feature_integration_enabled !== undefined ? body.feature_integration_enabled : defaults.featureIntegrationEnabled,
         featureCrmEnabled: body.feature_crm_enabled !== undefined ? body.feature_crm_enabled : defaults.featureCrmEnabled,
+        crmMaxBoards: toInt(body.crm_max_boards),
+        crmMaxRecords: toInt(body.crm_max_records),
         maxOrganizations: toInt(body.max_organizations),
         gmtLocation: body.gmt_location || body.gmtLocation,
         customAppTitle: body.custom_app_title !== undefined ? body.custom_app_title : (body.customAppTitle !== undefined ? body.customAppTitle : null),
@@ -135,7 +145,7 @@ function assertMemberCapWithinTotal(memberStorageLimitBytes, storageLimitBytes) 
 }
 
 class BillingService {
-    async createLicenseKey({ ownerEmail, planName = 'Pro', storageLimitBytes, maxMembers, memberStorageLimitBytes, featureApprovalEnabled, featureChatEnabled, featureIntegrationEnabled, featureCrmEnabled, maxOrganizations, gmtLocation = 'GMT+7 (Asia/Jakarta)', customAppTitle = null, customLogoUrl = null, sendEmail = true, createdBy = null, customKey = null }) {
+    async createLicenseKey({ ownerEmail, planName = 'Pro', storageLimitBytes, maxMembers, memberStorageLimitBytes, featureApprovalEnabled, featureChatEnabled, featureIntegrationEnabled, featureCrmEnabled, crmMaxBoards, crmMaxRecords, maxOrganizations, gmtLocation = 'GMT+7 (Asia/Jakarta)', customAppTitle = null, customLogoUrl = null, sendEmail = true, createdBy = null, customKey = null }) {
         if (!ownerEmail || !ownerEmail.trim()) {
             throw new AppError('Prospective Owner Email address is required', 400);
         }
@@ -182,6 +192,8 @@ class BillingService {
             featureChatEnabled: finalChat,
             featureIntegrationEnabled: finalIntegration,
             featureCrmEnabled: finalCrm,
+            crmMaxBoards: crmMaxBoards ?? defaults.crmMaxBoards,
+            crmMaxRecords: crmMaxRecords ?? defaults.crmMaxRecords,
             maxOrganizations: maxOrganizations || await subscriptionTierService.resolveMaxOrganizations(planName),
             gmtLocation: gmtLocation || 'GMT+7 (Asia/Jakarta)',
             customAppTitle: customAppTitle || null,

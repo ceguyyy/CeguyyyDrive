@@ -37,7 +37,7 @@ import {
 
 import CloudLogo from '../ui/CloudLogo';
 import { isSuperAdmin } from '../../utils/roles';
-import { crmUrl, isCrmUrlKnown } from '../../utils/crm';
+import { CRM_PATH } from '../../utils/crm';
 
 const EXPANDED_WIDTH = 260;
 const COLLAPSED_WIDTH = 72;
@@ -92,13 +92,10 @@ export default function Sidebar() {
     // Re-checked server-side either way: apiKeyService gates on owner/admin, and
     // apiKeyMiddleware rejects keys while the feature is off. This is navigation,
     // not the control.
-    // CRM is a separate application on its own subdomain. Shown to any member of
-    // an organization that has been sold it — not owner-only, since a CRM is used
-    // by the team, not administered by one person. The CRM enforces its own
-    // access; this is only the door.
-    const canUseCrm = !!currentOrg
-        && currentOrg.feature_crm_enabled === true
-        && isCrmUrlKnown();
+    // Shown to any member of an organization that has been sold CRM — not
+    // owner-only, since a CRM is used by a team rather than administered by one
+    // person. The CRM page enforces the entitlement again on its own.
+    const canUseCrm = !!currentOrg && currentOrg.feature_crm_enabled === true;
 
     const canUseIntegration = isSuperAdmin(user)
         || (!!currentOrg
@@ -430,7 +427,7 @@ export default function Sidebar() {
                         <ListItem disablePadding sx={{ mb: 0.5, display: 'block' }}>
                             <ListItemButton
                                 component="a"
-                                href={crmUrl}
+                                href={CRM_PATH}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 sx={{

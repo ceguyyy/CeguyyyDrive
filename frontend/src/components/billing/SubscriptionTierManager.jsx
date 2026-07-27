@@ -31,6 +31,8 @@ const EMPTY_FORM = {
     // Off by default: Integration exposes an API surface, so a new tier opts in.
     feature_integration_enabled: false,
     feature_crm_enabled: false,
+    crm_max_boards: 0,
+    crm_max_records: 0,
     sort_order: 100
 };
 
@@ -45,6 +47,8 @@ const formFromTier = (tier) => ({
     feature_chat_enabled: tier.feature_chat_enabled,
     feature_integration_enabled: tier.feature_integration_enabled,
     feature_crm_enabled: tier.feature_crm_enabled,
+    crm_max_boards: tier.crm_max_boards ?? 0,
+    crm_max_records: tier.crm_max_records ?? 0,
     sort_order: tier.sort_order
 });
 
@@ -222,7 +226,7 @@ export default function SubscriptionTierManager({ tiers = [], onChanged }) {
                                                 <Chip size="small" icon={<HubIcon />} label="API" variant="outlined" />
                                             )}
                                             {tier.feature_crm_enabled && (
-                                                <Chip size="small" label="CRM" variant="outlined" />
+                                                <Chip size="small" label={`CRM ${tier.crm_max_boards}/${tier.crm_max_records}`} variant="outlined" />
                                             )}
                                             {tier.feature_approval_enabled && (
                                                 <Chip size="small" icon={<ApprovalIcon />} label="Appr" variant="outlined" />
@@ -325,6 +329,16 @@ export default function SubscriptionTierManager({ tiers = [], onChanged }) {
                             control={<Switch checked={!!form.feature_crm_enabled} onChange={setField("feature_crm_enabled")} />}
                             label="Enable AbuGreySoft CRM"
                         />
+                        {form.feature_crm_enabled && (
+                            <Stack direction="row" spacing={2} sx={{ pl: 4 }}>
+                                <TextField label="Max CRM Tables" type="number" size="small" fullWidth
+                                    value={form.crm_max_boards} onChange={setField("crm_max_boards")}
+                                    helperText="0 grants none" />
+                                <TextField label="Max CRM Records" type="number" size="small" fullWidth
+                                    value={form.crm_max_records} onChange={setField("crm_max_records")}
+                                    helperText="Rows across all tables" />
+                            </Stack>
+                        )}
                     </Stack>
                 </DialogContent>
                 <DialogActions sx={{ p: 2 }}>

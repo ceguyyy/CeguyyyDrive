@@ -114,6 +114,8 @@ export default function BillingManagementPage() {
     const [editApproval, setEditApproval] = useState(true);
     const [editIntegration, setEditIntegration] = useState(false);
     const [editCrm, setEditCrm] = useState(false);
+    const [editCrmBoards, setEditCrmBoards] = useState(0);
+    const [editCrmRecords, setEditCrmRecords] = useState(0);
 
     // Declared after the state it reads: a const cannot be referenced before
     // its initializer runs, and placing this above threw on every render.
@@ -142,6 +144,8 @@ export default function BillingManagementPage() {
     // Integration exposes an API surface, so it is opted into rather than on by default.
     const [newIntegration, setNewIntegration] = useState(false);
     const [newCrm, setNewCrm] = useState(false);
+    const [newCrmBoards, setNewCrmBoards] = useState(0);
+    const [newCrmRecords, setNewCrmRecords] = useState(0);
     const [newGmtLocation, setNewGmtLocation] = useState('GMT+7 (Asia/Jakarta)');
     const [newCustomAppTitle, setNewCustomAppTitle] = useState('');
     const [newCustomLogoUrl, setNewCustomLogoUrl] = useState('');
@@ -269,6 +273,8 @@ export default function BillingManagementPage() {
         setEditApproval(org.feature_approval_enabled !== false);
         setEditIntegration(org.feature_integration_enabled === true);
         setEditCrm(org.feature_crm_enabled === true);
+        setEditCrmBoards(org.crm_max_boards ?? 0);
+        setEditCrmRecords(org.crm_max_records ?? 0);
         setEditNotes(org.admin_notes || '');
         setEditOrgModal(true);
     };
@@ -291,6 +297,8 @@ export default function BillingManagementPage() {
                 feature_approval_enabled: editApproval,
                 feature_integration_enabled: editIntegration,
                 feature_crm_enabled: editCrm,
+                crm_max_boards: Number(editCrmBoards) || 0,
+                crm_max_records: Number(editCrmRecords) || 0,
                 admin_notes: editNotes
             });
             const propagated = res.data?.data?.organization?.propagated_to ?? [];
@@ -349,6 +357,8 @@ export default function BillingManagementPage() {
                 featureChatEnabled: newChat,
                 featureIntegrationEnabled: newIntegration,
                 featureCrmEnabled: newCrm,
+                crmMaxBoards: Number(newCrmBoards) || 0,
+                crmMaxRecords: Number(newCrmRecords) || 0,
                 featureApprovalEnabled: newApproval,
                 gmtLocation: newGmtLocation,
                 customAppTitle: newCustomAppTitle ? newCustomAppTitle.trim() : null,
@@ -853,6 +863,14 @@ export default function BillingManagementPage() {
                                             control={<Switch checked={newCrm} onChange={(e) => setNewCrm(e.target.checked)} color="primary" />}
                                             label={<Typography variant="body2" fontWeight={600}>Enable AbuGreySoft CRM</Typography>}
                                         />
+                                        {newCrm && (
+                                            <Stack direction="row" spacing={1.5} sx={{ pl: 5 }}>
+                                                <TextField label="Max CRM Tables" type="number" size="small" fullWidth
+                                                    value={newCrmBoards} onChange={(e) => setNewCrmBoards(e.target.value)} />
+                                                <TextField label="Max CRM Records" type="number" size="small" fullWidth
+                                                    value={newCrmRecords} onChange={(e) => setNewCrmRecords(e.target.value)} />
+                                            </Stack>
+                                        )}
                                     </Box>
 
                                     <Box sx={{ mb: 2.5, p: 2, bgcolor: 'action.hover', borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
@@ -1297,6 +1315,16 @@ export default function BillingManagementPage() {
                                 control={<Switch checked={editCrm} onChange={(e) => setEditCrm(e.target.checked)} color="primary" />}
                                 label={<Typography variant="body2" fontWeight={600}>Enable AbuGreySoft CRM</Typography>}
                             />
+                            {editCrm && (
+                                <Stack direction="row" spacing={1.5} sx={{ pl: 5, pb: 1 }}>
+                                    <TextField label="Max CRM Tables" type="number" size="small" fullWidth
+                                        value={editCrmBoards} onChange={(e) => setEditCrmBoards(e.target.value)}
+                                        helperText="0 = none" />
+                                    <TextField label="Max CRM Records" type="number" size="small" fullWidth
+                                        value={editCrmRecords} onChange={(e) => setEditCrmRecords(e.target.value)}
+                                        helperText="Rows across all tables" />
+                                </Stack>
+                            )}
                         </Box>
 
                         <TextField

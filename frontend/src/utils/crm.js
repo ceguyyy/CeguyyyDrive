@@ -1,40 +1,12 @@
 /**
  * Where the CRM lives.
  *
- * CRM is a separate application on its own subdomain, not a route in this app,
- * so the sidebar entry is an external link rather than a <NavLink>.
+ * It is part of this application, not a separate deployment, so this is an
+ * in-app path rather than a derived subdomain. It still opens in a new tab: the
+ * CRM is a place people sit in for a long stretch, and losing the drive tab to
+ * get there is the wrong trade.
  *
- * VITE_CRM_URL wins when set. Otherwise the host is derived by replacing the
- * first label with "crm" — app.example.com becomes crm.example.com — which is
- * right for every deployed environment and wrong for localhost, where there is
- * no subdomain to swap. Local development therefore needs the variable set, and
- * the entry point stays hidden until it is.
+ * Kept as a module rather than a literal so the sidebar, and anything else that
+ * links here later, cannot disagree about the path.
  */
-const CONFIGURED = String(import.meta.env.VITE_CRM_URL || '').trim();
-
-function deriveFromHost() {
-    if (typeof window === 'undefined') return '';
-
-    const { protocol, hostname } = window.location;
-
-    // No subdomain to replace, and "crm.localhost" resolves nowhere by default.
-    const isLocal = hostname === 'localhost'
-        || hostname === '127.0.0.1'
-        || hostname.endsWith('.localhost');
-    if (isLocal) return '';
-
-    const labels = hostname.split('.');
-    // A bare apex (example.com) gains a subdomain; anything deeper has its
-    // first label swapped, so app.example.com does not become crm.app.example.com.
-    const host = labels.length <= 2
-        ? ['crm', ...labels].join('.')
-        : ['crm', ...labels.slice(1)].join('.');
-
-    return `${protocol}//${host}`;
-}
-
-export const crmUrl = CONFIGURED || deriveFromHost();
-
-// Without a URL there is nothing to link to, so the entry point is not shown at
-// all rather than rendered as a dead link.
-export const isCrmUrlKnown = () => crmUrl.length > 0;
+export const CRM_PATH = '/crm';
