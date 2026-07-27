@@ -300,13 +300,15 @@ export default function LandingPage() {
                         <Grid size={{ xs: 12, md: 6 }}>
                             <Reveal>
                                 <Box ref={heroArt.ref} sx={heroArt.parallaxSx}>
-                                <Wireframe
-                                    width={880} height={620}
-                                    label="Hero — product screenshot or illustration"
-                                    sx={{ bgcolor: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.25)',
-                                        backgroundImage: 'repeating-linear-gradient(135deg, transparent, transparent 11px, rgba(255,255,255,0.06) 11px, rgba(255,255,255,0.06) 22px)',
-                                        '& p, & span': { color: 'rgba(255,255,255,0.85) !important' } }}
-                                />
+                                    <Wireframe
+                                        width={880} height={620}
+                                        label="Hero — product screenshot or illustration"
+                                        sx={{
+                                            bgcolor: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.25)',
+                                            backgroundImage: 'repeating-linear-gradient(135deg, transparent, transparent 11px, rgba(255,255,255,0.06) 11px, rgba(255,255,255,0.06) 22px)',
+                                            '& p, & span': { color: 'rgba(255,255,255,0.85) !important' }
+                                        }}
+                                    />
                                 </Box>
                             </Reveal>
                         </Grid>

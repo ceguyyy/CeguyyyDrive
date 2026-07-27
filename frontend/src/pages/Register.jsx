@@ -5,6 +5,7 @@ import { useAuthStore } from '../store/authStore';
 import { Container, Paper, Typography, TextField, Button, Box, Alert, Link, Tabs, Tab, Divider, Stack, InputAdornment, IconButton } from '@mui/material';
 import { Business as OrgIcon, Group as MemberIcon, MarkEmailRead as EmailIcon, Visibility, VisibilityOff } from '@mui/icons-material';
 import CloudLogo from '../components/ui/CloudLogo';
+import BackToHome from '../components/ui/BackToHome';
 
 const PLATFORM_ADMIN_TAB = 2;
 
@@ -177,6 +178,8 @@ export default function Register({ platformAdminOnly = false }) {
     return (
         <Container component="main" maxWidth="sm" sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', py: 6 }}>
             <Paper elevation={0} sx={{ p: { xs: 3, sm: 5 }, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', border: '1px solid #EAEAEA', borderRadius: 3, boxShadow: '0 10px 30px rgba(0,0,0,0.04)' }}>
+                {/* No Register button here — it would point at this page. */}
+                <BackToHome showRegister={false} />
                 <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', flexDirection: 'column' }}>
                     <CloudLogo size={56} sx={{ mb: 1.5 }} />
                     <Typography component="h1" variant="h5" fontWeight="800" sx={{ letterSpacing: '-0.5px' }}>

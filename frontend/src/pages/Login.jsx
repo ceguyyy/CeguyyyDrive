@@ -8,6 +8,7 @@ import { useAuthStore } from '../store/authStore';
 import { Container, Paper, Typography, TextField, Button, Box, Alert, Link } from '@mui/material';
 
 import CloudLogo from '../components/ui/CloudLogo';
+import BackToHome from '../components/ui/BackToHome';
 
 const schema = z.object({
     email: z.string().email("Invalid email address"),
@@ -131,6 +132,7 @@ export default function Login() {
     return (
         <Container component="main" maxWidth="xs" sx={{ height: '100vh', display: 'flex', alignItems: 'center' }}>
             <Paper elevation={0} sx={{ p: 4, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', border: '1px solid #EAEAEA', borderRadius: 2 }}>
+                <BackToHome />
                 <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', flexDirection: 'column' }}>
                     <CloudLogo size={56} sx={{ mb: 1.5 }} />
                     <Typography component="h1" variant="h5" fontWeight="bold">

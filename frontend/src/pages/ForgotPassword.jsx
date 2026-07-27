@@ -7,6 +7,7 @@ import {
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import api from '../services/api';
 import CloudLogo from '../components/ui/CloudLogo';
+import BackToHome from '../components/ui/BackToHome';
 import { runCaptcha } from '../utils/captcha';
 
 const MIN_PASSWORD_LENGTH = 8;
@@ -112,6 +113,7 @@ export default function ForgotPassword() {
                     boxShadow: '0 10px 30px rgba(0,0,0,0.04)'
                 }}
             >
+                <BackToHome />
                 <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', flexDirection: 'column' }}>
                     <CloudLogo size={56} sx={{ mb: 1.5 }} />
                     <Typography component="h1" variant="h5" fontWeight="800" sx={{ letterSpacing: '-0.5px' }}>
