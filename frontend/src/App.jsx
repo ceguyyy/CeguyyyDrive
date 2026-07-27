@@ -19,12 +19,15 @@ import StarredFiles from './pages/StarredFiles';
 import CompanyDrivePage from './pages/CompanyDrivePage';
 import CompanyDriveTrash from './pages/CompanyDriveTrash';
 import BillingManagementPage from './pages/BillingManagementPage';
+import LandingPage from './pages/LandingPage';
 import IntegrationPage from './pages/IntegrationPage';
 
 const ProtectedRoute = ({ children }) => {
     const { token } = useAuthStore();
 
-    if (!token) return <Navigate to="/login" replace />;
+    // Sent to the landing page rather than straight to /login: someone who has
+    // never signed in needs the pitch, not a password box.
+    if (!token) return <Navigate to="/" replace />;
     return children;
 };
 
@@ -61,32 +64,41 @@ export default function App() {
                 actually gate the role — this only stops advertising it. */}
             <Route path="/ceguyyyy-admin-billing" element={<Register platformAdminOnly />} />
             
-            <Route path="/" element={
+            {/* The root is public now. A signed-in visitor has no use for the
+                marketing page, so they go straight to their drive. */}
+            <Route path="/" element={token ? <Navigate to="/drive" replace /> : <LandingPage />} />
+
+            {/* A layout route with no path of its own: the app shell wraps these
+                children without owning "/", which the landing page needs. Children
+                therefore carry absolute paths. */}
+            <Route element={
                 <ProtectedRoute>
                     <DashboardLayout />
                 </ProtectedRoute>
             }>
-                <Route index element={<Navigate to="/drive" replace />} />
-                <Route path="drive" element={<Dashboard />} />
-                <Route path="drive/folders/:folderId" element={<Dashboard />} />
-                <Route path="starred" element={<StarredFiles />} />
-                <Route path="company-drive/:orgId" element={<CompanyDrivePage />} />
-                <Route path="company-drive/:orgId/folders/:folderId" element={<CompanyDrivePage />} />
-                <Route path="company-drive/:orgId/trash" element={<CompanyDriveTrash />} />
-                <Route path="shared" element={<SharedWithMe />} />
-                <Route path="approvals" element={<ApprovalsPage />} />
-                <Route path="organization" element={<OrganizationSettings />} />
-                <Route path="integration" element={<IntegrationPage />} />
-                <Route path="trash" element={<Trash />} />
-                <Route path="chat" element={<ChatPage />} />
-                <Route path="billing" element={
+                <Route path="/drive" element={<Dashboard />} />
+                <Route path="/drive/folders/:folderId" element={<Dashboard />} />
+                <Route path="/starred" element={<StarredFiles />} />
+                <Route path="/company-drive/:orgId" element={<CompanyDrivePage />} />
+                <Route path="/company-drive/:orgId/folders/:folderId" element={<CompanyDrivePage />} />
+                <Route path="/company-drive/:orgId/trash" element={<CompanyDriveTrash />} />
+                <Route path="/shared" element={<SharedWithMe />} />
+                <Route path="/approvals" element={<ApprovalsPage />} />
+                <Route path="/organization" element={<OrganizationSettings />} />
+                <Route path="/integration" element={<IntegrationPage />} />
+                <Route path="/trash" element={<Trash />} />
+                <Route path="/chat" element={<ChatPage />} />
+                <Route path="/billing" element={
                     <SuperAdminRoute>
                         <BillingManagementPage />
                     </SuperAdminRoute>
                 } />
             </Route>
 
-            <Route path="*" element={<Navigate to="/drive" replace />} />
+            {/* An unknown URL sends a guest to the landing page directly. Routing
+                them to /drive would only bounce off ProtectedRoute and land here
+                anyway, one redirect later. */}
+            <Route path="*" element={<Navigate to={token ? '/drive' : '/'} replace />} />
         </Routes>
     );
 }

@@ -1,3 +1,18 @@
+html {
+  /* Anchor links on the landing page glide rather than jump. Declared on <html>
+     because that is the scrolling element; setting it on body has no effect. */
+  scroll-behavior: smooth;
+  /* Sticky headers otherwise cover the top of whatever an anchor lands on. */
+  scroll-padding-top: 84px;
+}
+
+/* Motion is a preference, not a default. Honour it for anchor jumps too. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
 body {
   margin: 0;
   -webkit-font-smoothing: antialiased;
