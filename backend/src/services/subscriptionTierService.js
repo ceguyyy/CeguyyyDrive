@@ -78,6 +78,13 @@ function toTierFields(body = {}, { partial = false } = {}) {
         fields.featureIntegrationEnabled = false;
     }
 
+    // Also off by default: CRM is a separate product, sold separately.
+    if (body.feature_crm_enabled !== undefined) {
+        fields.featureCrmEnabled = Boolean(body.feature_crm_enabled);
+    } else if (!partial) {
+        fields.featureCrmEnabled = false;
+    }
+
     if (body.sort_order !== undefined) {
         fields.sortOrder = Number(body.sort_order);
     } else if (!partial) {
@@ -110,7 +117,8 @@ class SubscriptionTierService {
             maxOrganizations: tier.max_organizations,
             featureApprovalEnabled: tier.feature_approval_enabled,
             featureChatEnabled: tier.feature_chat_enabled,
-            featureIntegrationEnabled: tier.feature_integration_enabled
+            featureIntegrationEnabled: tier.feature_integration_enabled,
+            featureCrmEnabled: tier.feature_crm_enabled
         };
     }
 

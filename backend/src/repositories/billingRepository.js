@@ -1,15 +1,15 @@
 const db = require('../config/db');
 
 class BillingRepository {
-    async createLicenseKey({ licenseKey, ownerEmail, planName = 'Pro', storageLimitBytes = 10737418240, maxMembers = 25, memberStorageLimitBytes = 10737418240, featureApprovalEnabled = true, featureChatEnabled = true, featureIntegrationEnabled = false, maxOrganizations = 1, createdBy = null, gmtLocation = 'GMT+7 (Asia/Jakarta)', customAppTitle = null, customLogoUrl = null }) {
+    async createLicenseKey({ licenseKey, ownerEmail, planName = 'Pro', storageLimitBytes = 10737418240, maxMembers = 25, memberStorageLimitBytes = 10737418240, featureApprovalEnabled = true, featureChatEnabled = true, featureIntegrationEnabled = false, featureCrmEnabled = false, maxOrganizations = 1, createdBy = null, gmtLocation = 'GMT+7 (Asia/Jakarta)', customAppTitle = null, customLogoUrl = null }) {
         const result = await db.query(
             `INSERT INTO org_licenses (
                 license_key, owner_email, plan_name, storage_limit_bytes, max_members, member_storage_limit_bytes,
-                feature_approval_enabled, feature_chat_enabled, feature_integration_enabled, max_organizations,
-                status, created_by, gmt_location, custom_app_title, custom_logo_url
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'available', $11, $12, $13, $14)
+                feature_approval_enabled, feature_chat_enabled, feature_integration_enabled, feature_crm_enabled,
+                max_organizations, status, created_by, gmt_location, custom_app_title, custom_logo_url
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'available', $12, $13, $14, $15)
             RETURNING *`,
-            [licenseKey.trim(), ownerEmail.trim().toLowerCase(), planName, storageLimitBytes, maxMembers, memberStorageLimitBytes, featureApprovalEnabled, featureChatEnabled, featureIntegrationEnabled, maxOrganizations, createdBy, gmtLocation, customAppTitle, customLogoUrl]
+            [licenseKey.trim(), ownerEmail.trim().toLowerCase(), planName, storageLimitBytes, maxMembers, memberStorageLimitBytes, featureApprovalEnabled, featureChatEnabled, featureIntegrationEnabled, featureCrmEnabled, maxOrganizations, createdBy, gmtLocation, customAppTitle, customLogoUrl]
         );
         return result.rows[0];
     }
@@ -85,7 +85,7 @@ class BillingRepository {
         return result.rows;
     }
 
-    async updateOrganizationBilling(orgId, { planName, storageLimitBytes, maxMembers, memberStorageLimitBytes, featureApprovalEnabled, featureChatEnabled, featureIntegrationEnabled, maxOrganizations, status, billingNotes, gmtLocation, customAppTitle, customLogoUrl }) {
+    async updateOrganizationBilling(orgId, { planName, storageLimitBytes, maxMembers, memberStorageLimitBytes, featureApprovalEnabled, featureChatEnabled, featureIntegrationEnabled, featureCrmEnabled, maxOrganizations, status, billingNotes, gmtLocation, customAppTitle, customLogoUrl }) {
         const result = await db.query(
             `UPDATE organizations
              SET plan_name = COALESCE($2, plan_name),
@@ -95,14 +95,15 @@ class BillingRepository {
                  feature_approval_enabled = COALESCE($6, feature_approval_enabled),
                  feature_chat_enabled = COALESCE($7, feature_chat_enabled),
                  feature_integration_enabled = COALESCE($8, feature_integration_enabled),
-                 max_organizations = COALESCE($9, max_organizations),
-                 status = COALESCE($10, status),
-                 billing_notes = COALESCE($11, billing_notes),
-                 gmt_location = COALESCE($12, gmt_location),
-                 custom_app_title = COALESCE($13, custom_app_title),
-                 custom_logo_url = COALESCE($14, custom_logo_url)
+                 feature_crm_enabled = COALESCE($9, feature_crm_enabled),
+                 max_organizations = COALESCE($10, max_organizations),
+                 status = COALESCE($11, status),
+                 billing_notes = COALESCE($12, billing_notes),
+                 gmt_location = COALESCE($13, gmt_location),
+                 custom_app_title = COALESCE($14, custom_app_title),
+                 custom_logo_url = COALESCE($15, custom_logo_url)
              WHERE id = $1 RETURNING *`,
-            [orgId, planName, storageLimitBytes, maxMembers, memberStorageLimitBytes, featureApprovalEnabled, featureChatEnabled, featureIntegrationEnabled, maxOrganizations, status, billingNotes, gmtLocation, customAppTitle !== undefined ? customAppTitle : null, customLogoUrl !== undefined ? customLogoUrl : null]
+            [orgId, planName, storageLimitBytes, maxMembers, memberStorageLimitBytes, featureApprovalEnabled, featureChatEnabled, featureIntegrationEnabled, featureCrmEnabled, maxOrganizations, status, billingNotes, gmtLocation, customAppTitle !== undefined ? customAppTitle : null, customLogoUrl !== undefined ? customLogoUrl : null]
         );
         return result.rows[0];
     }

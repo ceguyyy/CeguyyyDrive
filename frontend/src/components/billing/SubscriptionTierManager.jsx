@@ -30,6 +30,7 @@ const EMPTY_FORM = {
     feature_chat_enabled: true,
     // Off by default: Integration exposes an API surface, so a new tier opts in.
     feature_integration_enabled: false,
+    feature_crm_enabled: false,
     sort_order: 100
 };
 
@@ -43,6 +44,7 @@ const formFromTier = (tier) => ({
     feature_approval_enabled: tier.feature_approval_enabled,
     feature_chat_enabled: tier.feature_chat_enabled,
     feature_integration_enabled: tier.feature_integration_enabled,
+    feature_crm_enabled: tier.feature_crm_enabled,
     sort_order: tier.sort_order
 });
 
@@ -219,6 +221,9 @@ export default function SubscriptionTierManager({ tiers = [], onChanged }) {
                                             {tier.feature_integration_enabled && (
                                                 <Chip size="small" icon={<HubIcon />} label="API" variant="outlined" />
                                             )}
+                                            {tier.feature_crm_enabled && (
+                                                <Chip size="small" label="CRM" variant="outlined" />
+                                            )}
                                             {tier.feature_approval_enabled && (
                                                 <Chip size="small" icon={<ApprovalIcon />} label="Appr" variant="outlined" />
                                             )}
@@ -315,6 +320,10 @@ export default function SubscriptionTierManager({ tiers = [], onChanged }) {
                         <FormControlLabel
                             control={<Switch checked={!!form.feature_integration_enabled} onChange={setField('feature_integration_enabled')} />}
                             label="Enable Integration (API keys)"
+                        />
+                        <FormControlLabel
+                            control={<Switch checked={!!form.feature_crm_enabled} onChange={setField("feature_crm_enabled")} />}
+                            label="Enable AbuGreySoft CRM"
                         />
                     </Stack>
                 </DialogContent>

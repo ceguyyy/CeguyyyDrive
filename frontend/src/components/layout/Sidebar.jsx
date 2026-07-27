@@ -31,11 +31,13 @@ import {
     Apartment as CompanyDriveIcon,
     AdminPanelSettings as BillingIcon,
     Hub as IntegrationIcon,
+    ViewKanban as CrmIcon,
     ExpandLess, ExpandMore
 } from '@mui/icons-material';
 
 import CloudLogo from '../ui/CloudLogo';
 import { isSuperAdmin } from '../../utils/roles';
+import { crmUrl, isCrmUrlKnown } from '../../utils/crm';
 
 const EXPANDED_WIDTH = 260;
 const COLLAPSED_WIDTH = 72;
@@ -90,6 +92,14 @@ export default function Sidebar() {
     // Re-checked server-side either way: apiKeyService gates on owner/admin, and
     // apiKeyMiddleware rejects keys while the feature is off. This is navigation,
     // not the control.
+    // CRM is a separate application on its own subdomain. Shown to any member of
+    // an organization that has been sold it — not owner-only, since a CRM is used
+    // by the team, not administered by one person. The CRM enforces its own
+    // access; this is only the door.
+    const canUseCrm = !!currentOrg
+        && currentOrg.feature_crm_enabled === true
+        && isCrmUrlKnown();
+
     const canUseIntegration = isSuperAdmin(user)
         || (!!currentOrg
             && currentOrg.feature_integration_enabled === true
@@ -412,6 +422,33 @@ export default function Sidebar() {
                             {showFull && <ListItemText primary="Organization" />}
                         </ListItemButton>
                     </ListItem>
+
+                    {/* AbuGreySoft CRM — a different application, so this is an
+                        anchor rather than a NavLink. rel=noopener stops the
+                        opened tab reaching back through window.opener. */}
+                    {canUseCrm && (
+                        <ListItem disablePadding sx={{ mb: 0.5, display: 'block' }}>
+                            <ListItemButton
+                                component="a"
+                                href={crmUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                sx={{
+                                    py: 0.75, px: showFull ? 1.5 : 0, justifyContent: showFull ? 'flex-start' : 'center', borderRadius: 1,
+                                    '& .MuiListItemIcon-root': { minWidth: showFull ? 32 : 'auto', justifyContent: 'center', color: 'text.secondary' }
+                                }}
+                            >
+                                <ListItemIcon><CrmIcon /></ListItemIcon>
+                                {showFull && (
+                                    <ListItemText
+                                        primary="AbuGreySoft CRM"
+                                        secondary="Opens in a new tab"
+                                        secondaryTypographyProps={{ fontSize: '0.68rem' }}
+                                    />
+                                )}
+                            </ListItemButton>
+                        </ListItem>
+                    )}
 
                     {/* Integration — the active organization's owner, or a
                         platform admin, and only where Billing has enabled the

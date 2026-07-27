@@ -113,6 +113,7 @@ export default function BillingManagementPage() {
     const [editChat, setEditChat] = useState(true);
     const [editApproval, setEditApproval] = useState(true);
     const [editIntegration, setEditIntegration] = useState(false);
+    const [editCrm, setEditCrm] = useState(false);
 
     // Declared after the state it reads: a const cannot be referenced before
     // its initializer runs, and placing this above threw on every render.
@@ -140,6 +141,7 @@ export default function BillingManagementPage() {
     const [newApproval, setNewApproval] = useState(true);
     // Integration exposes an API surface, so it is opted into rather than on by default.
     const [newIntegration, setNewIntegration] = useState(false);
+    const [newCrm, setNewCrm] = useState(false);
     const [newGmtLocation, setNewGmtLocation] = useState('GMT+7 (Asia/Jakarta)');
     const [newCustomAppTitle, setNewCustomAppTitle] = useState('');
     const [newCustomLogoUrl, setNewCustomLogoUrl] = useState('');
@@ -266,6 +268,7 @@ export default function BillingManagementPage() {
         setEditChat(org.feature_chat_enabled !== false);
         setEditApproval(org.feature_approval_enabled !== false);
         setEditIntegration(org.feature_integration_enabled === true);
+        setEditCrm(org.feature_crm_enabled === true);
         setEditNotes(org.admin_notes || '');
         setEditOrgModal(true);
     };
@@ -287,6 +290,7 @@ export default function BillingManagementPage() {
                 feature_chat_enabled: editChat,
                 feature_approval_enabled: editApproval,
                 feature_integration_enabled: editIntegration,
+                feature_crm_enabled: editCrm,
                 admin_notes: editNotes
             });
             const propagated = res.data?.data?.organization?.propagated_to ?? [];
@@ -344,6 +348,7 @@ export default function BillingManagementPage() {
                 maxOrganizations: Number(newMaxOrgs),
                 featureChatEnabled: newChat,
                 featureIntegrationEnabled: newIntegration,
+                featureCrmEnabled: newCrm,
                 featureApprovalEnabled: newApproval,
                 gmtLocation: newGmtLocation,
                 customAppTitle: newCustomAppTitle ? newCustomAppTitle.trim() : null,
@@ -844,6 +849,10 @@ export default function BillingManagementPage() {
                                             control={<Switch checked={newIntegration} onChange={(e) => setNewIntegration(e.target.checked)} color="primary" />}
                                             label={<Typography variant="body2" fontWeight={600}>Enable Integration (API keys)</Typography>}
                                         />
+                                        <FormControlLabel
+                                            control={<Switch checked={newCrm} onChange={(e) => setNewCrm(e.target.checked)} color="primary" />}
+                                            label={<Typography variant="body2" fontWeight={600}>Enable AbuGreySoft CRM</Typography>}
+                                        />
                                     </Box>
 
                                     <Box sx={{ mb: 2.5, p: 2, bgcolor: 'action.hover', borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
@@ -1281,6 +1290,12 @@ export default function BillingManagementPage() {
                             <FormControlLabel
                                 control={<Switch checked={editIntegration} onChange={(e) => setEditIntegration(e.target.checked)} color="primary" />}
                                 label={<Typography variant="body2" fontWeight={600}>Enable Integration Feature (API keys)</Typography>}
+                            />
+                            {/* Controls only whether the sidebar entry appears; the
+                                CRM application enforces access on its own side. */}
+                            <FormControlLabel
+                                control={<Switch checked={editCrm} onChange={(e) => setEditCrm(e.target.checked)} color="primary" />}
+                                label={<Typography variant="body2" fontWeight={600}>Enable AbuGreySoft CRM</Typography>}
                             />
                         </Box>
 
