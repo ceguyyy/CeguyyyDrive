@@ -123,10 +123,11 @@ export default function LandingPage() {
                 </Stack>
 
                 <Container maxWidth="lg">
-                    {/* minHeight, not height: the row may never be shorter than the
-                        bar, but it must be free to grow rather than let a child
-                        overflow it and drag the alignment off. */}
-                    <Stack direction="row" alignItems="center" sx={{ minHeight: 76, gap: 2 }}>
+                    {/* The bar's height comes from symmetric padding, not from a
+                        minHeight the row then has to align within. Padding cannot
+                        leave the contents hugging the top the way a taller-than-
+                        content row does when any child resists centring. */}
+                    <Stack direction="row" alignItems="center" sx={{ py: 2.25, gap: 2 }}>
                         <Stack direction="row" alignItems="center" spacing={1.25} sx={{ flexShrink: 0 }}>
                             <CloudLogo size={30} />
                             {/* A flex column with its own centring: two stacked lines
